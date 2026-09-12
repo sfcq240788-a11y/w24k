@@ -1,69 +1,111 @@
 import Image from "next/image";
+import Link from "next/link";
+import { getFeaturedPieces } from "@/lib/data/piezas";
+import { ProductCard } from "@/components/ProductCard";
 
-export default function Home() {
+export const revalidate = 60; // Revalidate every 60 seconds
+
+export default async function Home() {
+  // Fetch featured pieces
+  const featuredPieces = await getFeaturedPieces();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <div className="w-full flex flex-col">
+      {/* Hero Section */}
+      <section className="relative w-full h-[85vh] md:h-[90vh] bg-onyx flex items-center justify-center overflow-hidden">
+        {/* Subtle gradient background */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#2a241b] to-onyx opacity-80" />
+        
+        {/* Abstract/Mood Image placeholder */}
+        <div className="absolute inset-0 opacity-40 mix-blend-overlay">
+           <Image
+             src="https://picsum.photos/1920/1080?random=hero"
+             alt="Joyería fina"
+             fill
+             className="object-cover"
+             priority
+           />
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-4xl">
+          <h1 className="font-serif text-[clamp(32px,5vw,56px)] text-ivory leading-tight mb-6">
+            Elegancia que <span className="text-gold-light italic font-cormorant font-normal">trasciende</span> el tiempo
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="font-sans text-ivory text-opacity-80 max-w-lg mb-12 text-sm md:text-base leading-relaxed tracking-wide">
+            Creaciones exclusivas de alta joyería. Cada pieza es el resultado de la maestría artesanal y el diseño contemporáneo.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/catalogo"
+            className="bg-gold text-onyx font-sans uppercase tracking-[0.1em] text-xs font-semibold py-4 px-10 hover:bg-gold-light transition-colors duration-300"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Explorar Colección
+          </Link>
         </div>
-      </main>
+      </section>
+
+      {/* Featured Section */}
+      {featuredPieces && featuredPieces.length > 0 && (
+        <section className="py-24 px-6 md:px-12 max-w-[1200px] mx-auto w-full">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16">
+            <div>
+              <h2 className="font-serif text-3xl md:text-4xl text-onyx mb-4">Obras Destacadas</h2>
+              <p className="font-sans text-taupe text-sm max-w-md leading-relaxed">
+                Una selección de nuestras piezas más excepcionales, donde el diseño se encuentra con la perfección artesanal.
+              </p>
+            </div>
+            <Link
+              href="/catalogo"
+              className="hidden md:inline-block mt-8 md:mt-0 font-sans text-xs uppercase tracking-widest text-onyx border-b border-gold pb-1 hover:text-gold transition-colors"
+            >
+              Ver Todas
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
+            {featuredPieces.map((piece) => (
+              <ProductCard
+                key={piece.id}
+                slug={piece.slug}
+                name={piece.nombre}
+                price={piece.precio}
+                // Mocking metadata for now since we don't have the joins in this simple query
+              />
+            ))}
+          </div>
+          
+          <div className="mt-12 text-center md:hidden">
+            <Link
+              href="/catalogo"
+              className="inline-block font-sans text-xs uppercase tracking-widest text-onyx border-b border-gold pb-1 hover:text-gold transition-colors"
+            >
+              Ver Todas
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {/* Workshop Presentation Block */}
+      <section className="bg-onyx text-ivory py-24 md:py-32 px-6 md:px-12 text-center relative overflow-hidden">
+        {/* Subtle decorative line */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-16 bg-gold opacity-50" />
+        
+        <div className="max-w-3xl mx-auto flex flex-col items-center">
+          <h2 className="font-serif text-3xl md:text-4xl text-gold-light mb-8">El Taller W24K</h2>
+          <p className="font-cormorant italic text-xl md:text-2xl text-ivory text-opacity-90 leading-relaxed mb-10 max-w-2xl">
+            "No creamos joyas, forjamos legados."
+          </p>
+          <div className="space-y-6 font-sans text-sm md:text-base text-taupe leading-loose max-w-2xl text-left md:text-center">
+            <p>
+              Fundado bajo la premisa de la perfección absoluta, nuestro taller reúne a maestros orfebres de talla internacional. Cada corte, cada engaste y cada pulido es ejecutado con una precisión meticulosa.
+            </p>
+            <p>
+              Seleccionamos únicamente metales de la más alta pureza y gemas con certificaciones de excelencia. En W24K, la tradición orfebre se fusiona con la innovación técnica para dar vida a creaciones que desafían lo ordinario.
+            </p>
+          </div>
+        </div>
+        
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px h-16 bg-gold opacity-50" />
+      </section>
     </div>
   );
 }
