@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCart } from "./cart";
 import Stripe from "stripe";
+import { getSiteUrl } from "@/lib/site-url";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -96,8 +97,8 @@ export async function processCheckout(direccion: any) {
     payment_method_types: ["card"],
     line_items: lineItems,
     mode: "payment",
-    success_url: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/carrito`,
+    success_url: `${getSiteUrl()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${getSiteUrl()}/carrito`,
     client_reference_id: pedido.id, // Muy importante para ligar el Webhook
     metadata: {
       pedido_id: pedido.id,
