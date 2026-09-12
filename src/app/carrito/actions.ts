@@ -5,11 +5,17 @@ import { revalidatePath } from "next/cache";
 
 export async function addPieceToCart(formData: FormData) {
   const piezaId = formData.get("pieza_id") as string;
-  if (!piezaId) return;
+  if (!piezaId) return { error: "Pieza no especificada." };
 
-  await addToCart(piezaId);
-  revalidatePath("/carrito");
-  revalidatePath(`/pieza`);
+  try {
+    await addToCart(piezaId);
+    revalidatePath("/carrito");
+    revalidatePath("/pieza");
+  } catch (error: any) {
+    // Incluye el mensaje del guard de disponibilidad de addToCart
+    // para que la UI pueda mostrarlo al usuario.
+    return { error: error.message as string };
+  }
 }
 
 export async function removePieceFromCart(formData: FormData) {
