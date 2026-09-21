@@ -84,11 +84,20 @@ export async function uploadFotoAction(
     return { ok: false, error: "No se recibió ningún archivo." };
   }
 
-  // 3. Leer bytes y validar con sharp ANTES de cualquier procesamiento
+  // 3. Leer bytes y auto-orientar ANTES de validar dimensiones.
+  //    Las fotos de teléfono guardan la rotación en EXIF en lugar de girar los
+  //    píxeles; si validamos sobre los metadatos crudos podemos medir alto/ancho
+  //    invertidos. Aplicamos rotate() sin argumentos (que lee y aplica la tag
+  //    de orientación EXIF) y extraemos las dimensiones del resultado orientado.
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  let orientedBuffer: Buffer;
   let metadata: Awaited<ReturnType<ReturnType<typeof sharp>["metadata"]>>;
   try {
-    metadata = await sharp(buffer).metadata();
+    orientedBuffer = await sharp(buffer)
+      .rotate() // aplica orientación EXIF y descarta la tag — primer paso obligatorio
+      .toBuffer();
+    metadata = await sharp(orientedBuffer).metadata();
   } catch {
     return {
       ok: false,
@@ -105,7 +114,7 @@ export async function uploadFotoAction(
     };
   }
 
-  // Validación de proporción 4:5 (±2%)
+  // Validación de proporción 4:5 (±2%) — sobre dimensiones ya orientadas
   const ratio = width / height;
   if (Math.abs(ratio - TARGET_RATIO) > RATIO_TOLERANCE) {
     const ratioStr = ratio.toFixed(2);
@@ -117,7 +126,7 @@ export async function uploadFotoAction(
     };
   }
 
-  // Validación de ancho mínimo
+  // Validación de ancho mínimo — sobre dimensiones ya orientadas
   if (width < MIN_WIDTH) {
     return {
       ok: false,
@@ -127,7 +136,11 @@ export async function uploadFotoAction(
     };
   }
 
-  // 4. Procesar con sharp: dos variantes WebP, sin metadatos EXIF
+  // 4. Procesar con sharp: dos variantes WebP, sin metadatos EXIF.
+  //    Usamos orientedBuffer (ya rotado) como fuente — no buffer crudo.
+  //    El comportamiento por defecto de sharp elimina todos los metadatos
+  //    al convertir (incluyendo GPS, cámara, timestamps): no se llama
+  //    withMetadata() porque eso los conservaría.
   const h = hash8();
   const ruta1200 = `${piezaId}/${tipoToma}-${h}-1200.webp`;
   const ruta600 = `${piezaId}/${tipoToma}-${h}-600.webp`;
@@ -135,18 +148,12 @@ export async function uploadFotoAction(
   let buf1200: Buffer;
   let buf600: Buffer;
   try {
-    // sharp().rotate() aplica la rotación EXIF y luego withMetadata(false)
-    // elimina todos los metadatos (incluyendo GPS, cámara, etc.)
-    buf1200 = await sharp(buffer)
-      .rotate() // aplica orientación EXIF correctamente antes de quitar metadatos
+    buf1200 = await sharp(orientedBuffer)
       .resize(1200, 1500, { fit: "fill" })
       .webp({ quality: 82 })
-      // No llamar withMetadata(): el comportamiento por defecto de sharp
-      // ya elimina todos los metadatos EXIF (incluyendo GPS, cámara, etc.)
       .toBuffer();
 
-    buf600 = await sharp(buffer)
-      .rotate()
+    buf600 = await sharp(orientedBuffer)
       .resize(600, 750, { fit: "fill" })
       .webp({ quality: 80 })
       .toBuffer();
