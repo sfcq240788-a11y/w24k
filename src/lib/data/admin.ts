@@ -1,12 +1,14 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { assertAdmin } from "@/lib/admin-guard";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 const piezaSchema = z.object({
   nombre: z.string().min(3),
+  sku: z.string().min(1),
   slug: z.string().min(3),
   descripcion: z.string().min(10),
   precio: z.coerce.number().positive(),
@@ -14,14 +16,21 @@ const piezaSchema = z.object({
   peso_gramos: z.coerce.number().positive(),
   tipo_pieza_id: z.string().uuid(),
   metal_id: z.string().uuid(),
-  estado_publicacion: z.enum(["borrador", "publicada", "archivada"]).default("borrador"),
+  estado_publicacion: z
+    .enum(["borrador", "publicada", "archivada"])
+    .default("borrador"),
 });
 
-export async function createPieceAction(formData: FormData) {
-  const supabase = await createClient();
+export async function createPieceAction(
+  formData: FormData
+): Promise<{ error: string } | void> {
+  // Verificar admin antes de cualquier operación
+  const guard = await assertAdmin();
+  if (!guard.ok) return { error: guard.error };
 
   const parseResult = piezaSchema.safeParse({
     nombre: formData.get("nombre"),
+    sku: formData.get("sku"),
     slug: formData.get("slug"),
     descripcion: formData.get("descripcion"),
     precio: formData.get("precio"),
@@ -33,68 +42,53 @@ export async function createPieceAction(formData: FormData) {
   });
 
   if (!parseResult.success) {
-    return { error: parseResult.error.errors.map(e => e.message).join(", ") };
+    // Zod v4: issues live at error.issues, not error.errors
+    const issues = parseResult.error.issues ?? (parseResult.error as any).errors ?? [];
+    return {
+      error: issues.map((e: { message: string }) => e.message).join(", "),
+    };
   }
 
-  const file = formData.get("foto") as File | null;
-  if (!file || file.size === 0) {
-    return { error: "Se requiere una foto." };
-  }
-
-  // Subir la foto al bucket
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${parseResult.data.slug}-${Date.now()}.${fileExt}`;
-  
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from("piezas-fotos")
-    .upload(fileName, file);
-
-  if (uploadError) {
-    return { error: "Error subiendo la foto: " + uploadError.message };
-  }
-
-  const { data: publicUrlData } = supabase.storage
-    .from("piezas-fotos")
-    .getPublicUrl(fileName);
+  const supabase = await createClient();
 
   const { data: newPiece, error: insertError } = await supabase
     .from("piezas")
     .insert(parseResult.data)
-    .select()
+    .select("id")
     .single();
 
-  if (insertError) {
-    // Intentar limpiar la imagen
-    await supabase.storage.from("piezas-fotos").remove([fileName]);
-    return { error: "Error creando la pieza: " + insertError.message };
+  if (insertError || !newPiece) {
+    return {
+      error: `Error al crear la pieza: ${insertError?.message}`,
+    };
   }
 
-  const { error: mediaError } = await supabase
-    .from("piezas_media")
-    .insert({
-      pieza_id: newPiece.id,
-      url: publicUrlData.publicUrl,
-      tipo: "imagen",
-      orden: 0,
-      es_principal: true,
-    });
-
-  if (mediaError) {
-    return { error: "Error guardando el media de la pieza: " + mediaError.message };
-  }
-
+  // Las fotos se gestionan desde /admin/piezas/[id]
   revalidatePath("/admin/piezas");
-  redirect("/admin/piezas");
+  redirect(`/admin/piezas/${newPiece.id}`);
 }
 
-export async function togglePublicacion(id: string, actual: string) {
+export async function togglePublicacion(
+  id: string,
+  actual: string
+): Promise<{ error: string } | void> {
+  // Verificar admin en el servidor — el middleware ya protege la ruta,
+  // pero las funciones de datos se verifican de forma independiente
+  // porque los layouts no se re-ejecutan en navegación entre páginas hermanas.
+  const guard = await assertAdmin();
+  if (!guard.ok) return { error: guard.error };
+
   const supabase = await createClient();
   const nuevo = actual === "publicada" ? "borrador" : "publicada";
-  
-  await supabase
+
+  const { error } = await supabase
     .from("piezas")
     .update({ estado_publicacion: nuevo })
     .eq("id", id);
-    
+
+  if (error) {
+    return { error: `Error al cambiar el estado: ${error.message}` };
+  }
+
   revalidatePath("/admin/piezas");
 }

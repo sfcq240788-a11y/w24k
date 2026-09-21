@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -657,7 +657,10 @@ export type Database = {
           id: string
           orden: number
           pieza_id: string
+          ruta_1200: string | null
+          ruta_600: string | null
           tipo: Database["public"]["Enums"]["tipo_media_enum"]
+          tipo_toma: string | null
           url: string
         }
         Insert: {
@@ -665,7 +668,10 @@ export type Database = {
           id?: string
           orden?: number
           pieza_id: string
+          ruta_1200?: string | null
+          ruta_600?: string | null
           tipo?: Database["public"]["Enums"]["tipo_media_enum"]
+          tipo_toma?: string | null
           url: string
         }
         Update: {
@@ -673,7 +679,10 @@ export type Database = {
           id?: string
           orden?: number
           pieza_id?: string
+          ruta_1200?: string | null
+          ruta_600?: string | null
           tipo?: Database["public"]["Enums"]["tipo_media_enum"]
+          tipo_toma?: string | null
           url?: string
         }
         Relationships: [

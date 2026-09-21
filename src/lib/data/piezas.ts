@@ -10,7 +10,7 @@ export type CorteRow = Database["public"]["Tables"]["cortes"]["Row"];
 export async function getFeaturedPieces() {
   const { data, error } = await supabase
     .from("piezas")
-    .select("id, nombre, precio, slug")
+    .select("id, nombre, precio, slug, piezas_media(url, ruta_600, orden)")
     .eq("estado_publicacion", "publicada")
     .eq("estado_inventario", "disponible")
     .eq("destacada", true)
@@ -26,13 +26,19 @@ export async function getFeaturedPieces() {
 export async function getCatalogData() {
   const { data: pieces } = await supabase
     .from("piezas")
-    .select("id, slug, nombre, precio, tipo_pieza_id, metal_id, estado_publicacion, piezas_piedras(piedra_id, corte_id), piezas_media(url, orden)")
+    .select("id, slug, nombre, precio, tipo_pieza_id, metal_id, estado_publicacion, piezas_piedras(piedra_id, corte_id), piezas_media(url, ruta_600, orden)")
     .eq("estado_publicacion", "publicada")
     .eq("estado_inventario", "disponible");
 
-  const { data: types } = await supabase.from("tipos_pieza").select("id, nombre");
-  const { data: metals } = await supabase.from("metales").select("id, nombre");
-  const { data: stones } = await supabase.from("piedras").select("id, nombre");
+  const { data: types } = await supabase
+    .from("tipos_pieza")
+    .select("id, nombre");
+  const { data: metals } = await supabase
+    .from("metales")
+    .select("id, nombre");
+  const { data: stones } = await supabase
+    .from("piedras")
+    .select("id, nombre");
   const { data: cuts } = await supabase.from("cortes").select("id, nombre");
 
   return {
@@ -47,7 +53,8 @@ export async function getCatalogData() {
 export async function getPieceBySlug(slug: string) {
   const { data, error } = await supabase
     .from("piezas")
-    .select(`
+    .select(
+      `
       id, 
       slug, 
       nombre, 
@@ -64,8 +71,9 @@ export async function getPieceBySlug(slug: string) {
         piedras ( nombre ),
         cortes ( nombre )
       ),
-      piezas_media ( url, orden )
-    `)
+      piezas_media ( url, ruta_1200, ruta_600, tipo_toma, orden )
+    `
+    )
     .eq("slug", slug)
     .eq("estado_publicacion", "publicada")
     .single();

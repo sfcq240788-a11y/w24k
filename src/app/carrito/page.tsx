@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { removePieceFromCart } from "./actions";
 import Link from "next/link";
 import Image from "next/image";
+import { resolveImageUrl } from "@/lib/media-url";
 
 export default async function CarritoPage() {
   // Verificamos la sesión de forma independiente para distinguir dos casos
@@ -61,22 +62,31 @@ export default async function CarritoPage() {
           <div className="flex flex-col gap-4">
             {items.map((item: any) => {
               const piece = item.piezas;
-              const imageUrl =
-                piece?.piezas_media?.[0]?.url ||
-                `https://picsum.photos/400/500?random=${piece?.slug}`;
+              // Tomar la foto de menor orden para la miniatura del carrito
+              const sortedMedia = [...(piece?.piezas_media ?? [])].sort(
+                (a: any, b: any) => (a.orden ?? 0) - (b.orden ?? 0)
+              );
+              const firstMedia = sortedMedia[0] ?? null;
+              const imageUrl = firstMedia
+                ? resolveImageUrl(firstMedia, "600")
+                : null;
 
               return (
                 <div
                   key={item.id}
                   className="flex gap-6 border border-line p-4 items-center bg-white shadow-sm"
                 >
-                  <div className="relative w-20 h-24 bg-ivory flex-shrink-0">
-                    <Image
-                      src={imageUrl}
-                      alt={piece?.nombre || "Pieza"}
-                      fill
-                      className="object-cover"
-                    />
+                  <div className="relative w-20 h-24 bg-ivory flex-shrink-0 overflow-hidden">
+                    {imageUrl ? (
+                      <Image
+                        src={imageUrl}
+                        alt={piece?.nombre || "Pieza"}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-onyx opacity-60" />
+                    )}
                   </div>
                   <div className="flex-grow">
                     <Link

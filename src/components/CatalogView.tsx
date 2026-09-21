@@ -133,15 +133,22 @@ export function CatalogView({ data }: { data: CatalogData }) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 gap-y-12">
-          {filteredPieces.map((piece) => (
-            <ProductCard
-              key={piece.id}
-              slug={piece.slug}
-              name={piece.nombre}
-              price={piece.precio}
-              imageUrl={piece.piezas_media && piece.piezas_media.length > 0 ? piece.piezas_media[0].url : undefined}
-            />
-          ))}
+          {filteredPieces.map((piece) => {
+            // Foto de menor orden para la tarjeta (variante 600)
+            const sortedMedia = [...(piece.piezas_media ?? [])].sort(
+              (a, b) => (a.orden ?? 0) - (b.orden ?? 0)
+            );
+            const firstMedia = sortedMedia[0] ?? null;
+            return (
+              <ProductCard
+                key={piece.id}
+                slug={piece.slug}
+                name={piece.nombre}
+                price={piece.precio}
+                media={firstMedia}
+              />
+            );
+          })}
           {filteredPieces.length === 0 && (
             <div className="col-span-full py-20 text-center text-taupe font-sans text-lg">
               No se encontraron piezas con estos filtros.

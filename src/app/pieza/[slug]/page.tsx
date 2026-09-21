@@ -15,12 +15,12 @@ export default async function PiezaPage({ params }: { params: Promise<{ slug: st
     notFound();
   }
 
-  // Extract images, sort by 'orden' if available
-  const media = piece.piezas_media ? (Array.isArray(piece.piezas_media) ? piece.piezas_media : [piece.piezas_media]) : [];
-  const images = media
-    .sort((a, b) => (a.orden || 0) - (b.orden || 0))
-    .map((m) => m.url)
-    .filter(Boolean);
+  // Ordenar por orden ASC y pasar los objetos completos a ProductGallery
+  // para que pueda usar resolveImageUrl con el tamaño correcto.
+  const media = piece.piezas_media
+    ? (Array.isArray(piece.piezas_media) ? piece.piezas_media : [piece.piezas_media])
+    : [];
+  const sortedMedia = media.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
 
   const metalName = piece.metales ? (Array.isArray(piece.metales) ? piece.metales[0]?.nombre : piece.metales.nombre) : 'Oro';
   const piedras = piece.piezas_piedras ? (Array.isArray(piece.piezas_piedras) ? piece.piezas_piedras : [piece.piezas_piedras]) : [];
@@ -36,7 +36,7 @@ export default async function PiezaPage({ params }: { params: Promise<{ slug: st
       <div className="flex flex-col lg:flex-row gap-16 lg:gap-24">
         {/* Gallery */}
         <div className="w-full lg:w-3/5">
-          <ProductGallery images={images} alt={piece.nombre} />
+          <ProductGallery images={sortedMedia} alt={piece.nombre} />
         </div>
 
         {/* Specs and details */}

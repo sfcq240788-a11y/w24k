@@ -2,30 +2,41 @@ import Image from "next/image";
 import Link from "next/link";
 import { getFeaturedPieces } from "@/lib/data/piezas";
 import { ProductCard } from "@/components/ProductCard";
+import { resolveImageUrl } from "@/lib/media-url";
 
 export const revalidate = 60; // Revalidate every 60 seconds
 
 export default async function Home() {
-  // Fetch featured pieces
   const featuredPieces = await getFeaturedPieces();
+
+  // Hero: primera pieza destacada con foto real.
+  // Si no hay ninguna, se muestra solo el degradado onyx sin imagen.
+  const heroPiece = featuredPieces[0] ?? null;
+  const heroMedia = heroPiece?.piezas_media
+    ? [...(Array.isArray(heroPiece.piezas_media) ? heroPiece.piezas_media : [heroPiece.piezas_media])]
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))[0] ?? null
+    : null;
+  const heroImageUrl = heroMedia ? resolveImageUrl(heroMedia, "1200") : null;
 
   return (
     <div className="w-full flex flex-col">
       {/* Hero Section */}
       <section className="relative w-full h-[85vh] md:h-[90vh] bg-onyx flex items-center justify-center overflow-hidden">
-        {/* Subtle gradient background */}
+        {/* Degradado base siempre presente */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#2a241b] to-onyx opacity-80" />
-        
-        {/* Abstract/Mood Image placeholder */}
-        <div className="absolute inset-0 opacity-40 mix-blend-overlay">
-           <Image
-             src="https://picsum.photos/1920/1080?random=hero"
-             alt="Joyería fina"
-             fill
-             className="object-cover"
-             priority
-           />
-        </div>
+
+        {/* Imagen de la pieza destacada como fondo del hero */}
+        {heroImageUrl && (
+          <div className="absolute inset-0 opacity-40 mix-blend-overlay">
+            <Image
+              src={heroImageUrl}
+              alt="Joyería fina W24K"
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
+        )}
 
         <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-4xl">
           <h1 className="font-serif text-[clamp(32px,5vw,56px)] text-ivory leading-tight mb-6">
@@ -62,17 +73,24 @@ export default async function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
-            {featuredPieces.map((piece) => (
-              <ProductCard
-                key={piece.id}
-                slug={piece.slug}
-                name={piece.nombre}
-                price={piece.precio}
-                // Mocking metadata for now since we don't have the joins in this simple query
-              />
-            ))}
+            {featuredPieces.map((piece, idx) => {
+              const sortedMedia = [
+                ...(Array.isArray(piece.piezas_media) ? piece.piezas_media : []),
+              ].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+              const firstMedia = sortedMedia[0] ?? null;
+              return (
+                <ProductCard
+                  key={piece.id}
+                  slug={piece.slug}
+                  name={piece.nombre}
+                  price={piece.precio}
+                  media={firstMedia}
+                  priority={idx === 0}
+                />
+              );
+            })}
           </div>
-          
+
           <div className="mt-12 text-center md:hidden">
             <Link
               href="/catalogo"
@@ -88,11 +106,11 @@ export default async function Home() {
       <section className="bg-onyx text-ivory py-24 md:py-32 px-6 md:px-12 text-center relative overflow-hidden">
         {/* Subtle decorative line */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-16 bg-gold opacity-50" />
-        
+
         <div className="max-w-3xl mx-auto flex flex-col items-center">
           <h2 className="font-serif text-3xl md:text-4xl text-gold-light mb-8">El Taller W24K</h2>
           <p className="font-cormorant italic text-xl md:text-2xl text-ivory text-opacity-90 leading-relaxed mb-10 max-w-2xl">
-            "No creamos joyas, forjamos legados."
+            &ldquo;No creamos joyas, forjamos legados.&rdquo;
           </p>
           <div className="space-y-6 font-sans text-sm md:text-base text-taupe leading-loose max-w-2xl text-left md:text-center">
             <p>
@@ -103,7 +121,7 @@ export default async function Home() {
             </p>
           </div>
         </div>
-        
+
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px h-16 bg-gold opacity-50" />
       </section>
     </div>
