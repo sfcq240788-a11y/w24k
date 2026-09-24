@@ -43,3 +43,10 @@ yarn-error.log*
 next-env.d.ts
 
 pruebas/
+
+check-db.js
+run-tests.js
+error-dom-*.html
+screenshot-*.png
+pequena.png
+Users*.png
