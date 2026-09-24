@@ -111,31 +111,155 @@ export async function getStorefrontData() {
   };
 }
 
-export async function getCatalogData() {
-  const { data: pieces } = await supabase
+import { siteConfig } from "@/lib/site-config";
+
+export const PAGE_SIZE = 24;
+
+export async function getCatalogOptions() {
+  // Fetch minimal data of all available pieces to compute active filter options
+  const { data, error } = await supabase
     .from("piezas")
-    .select("id, slug, nombre, precio, tipo_pieza_id, metal_id, estado_publicacion, piezas_piedras(piedra_id, corte_id), piezas_media(url, ruta_600, orden)")
+    .select(`
+      precio,
+      metales!inner ( slug, nombre ),
+      tipos_pieza!inner ( slug, nombre_plural ),
+      piezas_piedras (
+        piedras ( slug, nombre )
+      ),
+      piezas_media ( url )
+    `)
     .eq("estado_publicacion", "publicada")
     .eq("estado_inventario", "disponible");
 
-  const { data: types } = await supabase
-    .from("tipos_pieza")
-    .select("id, nombre");
-  const { data: metals } = await supabase
-    .from("metales")
-    .select("id, nombre");
-  const { data: stones } = await supabase
-    .from("piedras")
-    .select("id, nombre");
-  const { data: cuts } = await supabase.from("cortes").select("id, nombre");
+  if (error || !data) {
+    return { types: [], metals: [], stones: [], prices: [] };
+  }
+
+  const typesMap = new Map<string, string>();
+  const metalsMap = new Map<string, string>();
+  const stonesMap = new Map<string, string>();
+  const priceSet = new Set<string>();
+
+  let totalCount = 0;
+
+  for (const row of data) {
+    // Regla A2: excluir si no tiene fotos
+    if (!row.piezas_media || (Array.isArray(row.piezas_media) && row.piezas_media.length === 0)) {
+      continue;
+    }
+    
+    totalCount++;
+
+    if (row.tipos_pieza) {
+      const tp = row.tipos_pieza as any;
+      typesMap.set(tp.slug, tp.nombre_plural);
+    }
+    if (row.metales) {
+      const mt = row.metales as any;
+      metalsMap.set(mt.slug, mt.nombre);
+    }
+    if (row.piezas_piedras && Array.isArray(row.piezas_piedras)) {
+      for (const pp of row.piezas_piedras) {
+        const p = (pp as any).piedras;
+        if (p && p.slug !== "ninguna" && p.slug !== "sin-piedra") {
+          stonesMap.set(p.slug, p.nombre);
+        }
+      }
+    }
+    for (const r of siteConfig.rangosPrecio) {
+      if (row.precio >= r.min && row.precio <= r.max) {
+        priceSet.add(r.slug);
+      }
+    }
+  }
 
   return {
-    pieces: pieces || [],
-    types: types || [],
-    metals: metals || [],
-    stones: stones || [],
-    cuts: cuts || [],
+    types: Array.from(typesMap.entries()).map(([slug, nombre]) => ({ slug, nombre })),
+    metals: Array.from(metalsMap.entries()).map(([slug, nombre]) => ({ slug, nombre })),
+    stones: Array.from(stonesMap.entries()).map(([slug, nombre]) => ({ slug, nombre })),
+    prices: siteConfig.rangosPrecio.filter((r) => priceSet.has(r.slug)),
+    totalCount,
   };
+}
+
+export async function getCatalogData(params: {
+  tipo?: string;
+  metal?: string;
+  piedra?: string;
+  precio?: string;
+  orden?: string;
+  page?: number;
+}) {
+  let query = supabase
+    .from("piezas")
+    .select(`
+      id, slug, nombre, precio, estado_inventario, created_at,
+      metales!inner ( nombre, slug ),
+      tipos_pieza!inner ( nombre_plural, slug ),
+      piezas_media ( url, ruta_600, orden )
+    `, { count: 'exact' })
+    .eq("estado_publicacion", "publicada")
+    .eq("estado_inventario", "disponible");
+
+  if (params.tipo) {
+    query = query.eq("tipos_pieza.slug", params.tipo);
+  }
+  if (params.metal) {
+    query = query.eq("metales.slug", params.metal);
+  }
+  
+  if (params.piedra) {
+    // Filter by stone using an inner join on piezas_piedras -> piedras
+    const { data: validPieceIds } = await supabase
+      .from("piezas_piedras")
+      .select("pieza_id, piedras!inner(slug)")
+      .eq("piedras.slug", params.piedra);
+      
+    if (validPieceIds && validPieceIds.length > 0) {
+      query = query.in("id", validPieceIds.map((p) => p.pieza_id));
+    } else {
+      // Si no hay piezas con esta piedra, forzar resultado vacío
+      query = query.in("id", []);
+    }
+  }
+
+  if (params.precio) {
+    const range = siteConfig.rangosPrecio.find((r) => r.slug === params.precio);
+    if (range) {
+      if (range.min > 0) query = query.gte("precio", range.min);
+      if (range.max < Infinity) query = query.lte("precio", range.max);
+    }
+  }
+
+  if (params.orden === "precio-asc") {
+    query = query.order("precio", { ascending: true });
+  } else if (params.orden === "precio-desc") {
+    query = query.order("precio", { ascending: false });
+  } else if (params.orden === "novedades") {
+    query = query.order("created_at", { ascending: false });
+  } else {
+    // Destacadas: true primero
+    query = query.order("destacada", { ascending: false }).order("created_at", { ascending: false });
+  }
+
+  const page = Math.max(1, params.page || 1);
+  const start = (page - 1) * PAGE_SIZE;
+  const end = start + PAGE_SIZE - 1;
+
+  query = query.range(start, end);
+
+  const { data, count, error } = await query;
+
+  if (error || !data) {
+    console.error("Error fetching catalog data:", error);
+    return { pieces: [], count: 0 };
+  }
+
+  // Filtrar en memoria por A2 (sin foto) por seguridad, aunque getCatalogOptions ya excluyó las opciones.
+  // Es ideal tener un flag "tiene_fotos" en BD, pero lo filtramos post-query.
+  const mapped = data.map(mapToPiezaCard).filter((c): c is PiezaCard => c !== null);
+
+  return { pieces: mapped, count: count ?? 0 };
 }
 
 export async function getPieceBySlug(slug: string) {
