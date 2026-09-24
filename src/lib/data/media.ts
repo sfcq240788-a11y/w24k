@@ -12,6 +12,8 @@ const BUCKET = "piezas";
 const TARGET_RATIO = 4 / 5; // 0.8
 const RATIO_TOLERANCE = 0.02; // ±2%
 const MIN_WIDTH = 1200;
+const LIMIT_PIXELS = 50_000_000; // 50 MP — tope antes de decodificar
+const FORMATOS_ADMITIDOS = new Set(["jpeg", "png", "webp"]);
 
 const TIPOS_TOMA_VALIDOS = ["f", "d", "i", "m", "e"] as const;
 type TipoToma = (typeof TIPOS_TOMA_VALIDOS)[number];
@@ -36,25 +38,37 @@ async function syncEsPrincipal(piezaId: string): Promise<void> {
   const supabase = createAdminClient();
 
   // Obtenemos todas las fotos de la pieza ordenadas por orden ASC
-  const { data: fotos } = await supabase
+  const { data: fotos, error: fetchError } = await supabase
     .from("piezas_media")
     .select("id, orden")
     .eq("pieza_id", piezaId)
     .order("orden", { ascending: true });
 
+  if (fetchError) {
+    throw new Error(`syncEsPrincipal(${piezaId}): ${fetchError.message}`);
+  }
+
   if (!fotos || fotos.length === 0) return;
 
   // Primero ponemos es_principal = false en todas
-  await supabase
+  const { error: updateAllError } = await supabase
     .from("piezas_media")
     .update({ es_principal: false })
     .eq("pieza_id", piezaId);
 
+  if (updateAllError) {
+    throw new Error(`syncEsPrincipal(${piezaId}): ${updateAllError.message}`);
+  }
+
   // Luego marcamos la de menor orden como principal
-  await supabase
+  const { error: updatePrincipalError } = await supabase
     .from("piezas_media")
     .update({ es_principal: true })
     .eq("id", fotos[0].id);
+
+  if (updatePrincipalError) {
+    throw new Error(`syncEsPrincipal(${piezaId}): ${updatePrincipalError.message}`);
+  }
 }
 
 // ── Action: subir foto ────────────────────────────────────────────────────────
@@ -84,20 +98,16 @@ export async function uploadFotoAction(
     return { ok: false, error: "No se recibió ningún archivo." };
   }
 
-  // 3. Leer bytes y auto-orientar ANTES de validar dimensiones.
-  //    Las fotos de teléfono guardan la rotación en EXIF en lugar de girar los
-  //    píxeles; si validamos sobre los metadatos crudos podemos medir alto/ancho
-  //    invertidos. Aplicamos rotate() sin argumentos (que lee y aplica la tag
-  //    de orientación EXIF) y extraemos las dimensiones del resultado orientado.
+  // 3. Leer metadata del buffer crudo sin decodificar píxeles.
+  //    .metadata() lee solo las cabeceras del archivo; no hay decodificación
+  //    de píxeles en este paso. Se usa limitInputPixels:false para que una
+  //    imagen > 50 MP llegue a nuestra validación con el mensaje de megapíxeles
+  //    en lugar de caer en el catch genérico.
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  let orientedBuffer: Buffer;
   let metadata: Awaited<ReturnType<ReturnType<typeof sharp>["metadata"]>>;
   try {
-    orientedBuffer = await sharp(buffer)
-      .rotate() // aplica orientación EXIF y descarta la tag — primer paso obligatorio
-      .toBuffer();
-    metadata = await sharp(orientedBuffer).metadata();
+    metadata = await sharp(buffer, { limitInputPixels: false }).metadata();
   } catch {
     return {
       ok: false,
@@ -106,11 +116,37 @@ export async function uploadFotoAction(
     };
   }
 
-  const { width, height } = metadata;
+  // Validar formato admitido
+  if (!metadata.format || !FORMATOS_ADMITIDOS.has(metadata.format)) {
+    return {
+      ok: false,
+      error: "Formato no admitido: sube un JPEG, PNG o WebP.",
+    };
+  }
+
+  // Dimensiones visuales: las orientaciones EXIF 5-8 intercambian ejes físicos
+  // (el sensor estaba girado al capturar). Si no hay tag EXIF, orientation es
+  // undefined y tratamos como 1 (sin giro) → no hay intercambio.
+  const swapAxes = (metadata.orientation ?? 1) >= 5;
+  const width  = swapAxes ? metadata.height : metadata.width;
+  const height = swapAxes ? metadata.width  : metadata.height;
+
   if (!width || !height) {
     return {
       ok: false,
       error: "No se pudo determinar las dimensiones de la imagen.",
+    };
+  }
+
+  // Tope de píxeles antes de decodificar
+  const totalPixels = width * height;
+  if (totalPixels > LIMIT_PIXELS) {
+    const mpRecibidos = (totalPixels / 1_000_000).toFixed(1);
+    return {
+      ok: false,
+      error:
+        `La imagen es demasiado grande (${mpRecibidos} MP). ` +
+        `El máximo admitido es ${LIMIT_PIXELS / 1_000_000} MP.`,
     };
   }
 
@@ -136,24 +172,27 @@ export async function uploadFotoAction(
     };
   }
 
-  // 4. Procesar con sharp: dos variantes WebP, sin metadatos EXIF.
-  //    Usamos orientedBuffer (ya rotado) como fuente — no buffer crudo.
-  //    El comportamiento por defecto de sharp elimina todos los metadatos
-  //    al convertir (incluyendo GPS, cámara, timestamps): no se llama
-  //    withMetadata() porque eso los conservaría.
+  // 4. Procesar con sharp: dos variantes WebP en serie, sin metadatos EXIF.
+  //    sharp(buffer, {limitInputPixels}) → .rotate() aplica y descarta la tag
+  //    EXIF de orientación. El comportamiento por defecto de sharp elimina
+  //    todos los metadatos al convertir (GPS, cámara, timestamps); no se
+  //    llama withMetadata() porque eso los conservaría.
+  //    await secuencial (no Promise.all) para controlar el pico de memoria.
   const h = hash8();
   const ruta1200 = `${piezaId}/${tipoToma}-${h}-1200.webp`;
-  const ruta600 = `${piezaId}/${tipoToma}-${h}-600.webp`;
+  const ruta600  = `${piezaId}/${tipoToma}-${h}-600.webp`;
 
   let buf1200: Buffer;
   let buf600: Buffer;
   try {
-    buf1200 = await sharp(orientedBuffer)
+    buf1200 = await sharp(buffer, { limitInputPixels: LIMIT_PIXELS })
+      .rotate()
       .resize(1200, 1500, { fit: "fill" })
       .webp({ quality: 82 })
       .toBuffer();
 
-    buf600 = await sharp(orientedBuffer)
+    buf600 = await sharp(buffer, { limitInputPixels: LIMIT_PIXELS })
+      .rotate()
       .resize(600, 750, { fit: "fill" })
       .webp({ quality: 80 })
       .toBuffer();
@@ -165,9 +204,28 @@ export async function uploadFotoAction(
     };
   }
 
-  // 5. Subir ambas variantes al bucket (usa service_role para saltarse RLS)
+  // 5. Determinar el orden ANTES de subir archivos a Storage.
+  //    Máximo actual + 1
   const supabase = createAdminClient();
 
+  const { data: maxRow, error: maxError } = await supabase
+    .from("piezas_media")
+    .select("orden")
+    .eq("pieza_id", piezaId)
+    .order("orden", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (maxError) {
+    return {
+      ok: false,
+      error: "No se pudo calcular el orden de la foto. Intenta de nuevo.",
+    };
+  }
+
+  const orden = (maxRow?.orden ?? 0) + 1;
+
+  // 6. Subir ambas variantes al bucket (usa service_role para saltarse RLS)
   const { error: err1200 } = await supabase.storage
     .from(BUCKET)
     .upload(ruta1200, buf1200, {
@@ -191,29 +249,21 @@ export async function uploadFotoAction(
 
   if (err600) {
     // Limpiar el archivo 1200 ya subido
-    await supabase.storage.from(BUCKET).remove([ruta1200]);
+    const { error: removeErr } = await supabase.storage.from(BUCKET).remove([ruta1200]);
+    if (removeErr) {
+      console.error("[HUERFANOS]", [ruta1200], removeErr.message);
+    }
     return {
       ok: false,
       error: `Error al subir la variante 600px: ${err600.message}`,
     };
   }
 
-  // 6. Construir URL pública de la variante 1200 (se guarda en `url` para
+  // 7. Construir URL pública de la variante 1200 (se guarda en `url` para
   //    compatibilidad con el código que solo lee esa columna)
   const {
     data: { publicUrl },
   } = supabase.storage.from(BUCKET).getPublicUrl(ruta1200);
-
-  // 7. Determinar el orden: máximo actual + 1
-  const { data: maxRow } = await supabase
-    .from("piezas_media")
-    .select("orden")
-    .eq("pieza_id", piezaId)
-    .order("orden", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const orden = (maxRow?.orden ?? 0) + 1;
 
   // 8. Insertar fila en piezas_media
   const { data: newMedia, error: insertError } = await supabase
@@ -233,7 +283,10 @@ export async function uploadFotoAction(
 
   if (insertError || !newMedia) {
     // Limpiar los archivos subidos
-    await supabase.storage.from(BUCKET).remove([ruta1200, ruta600]);
+    const { error: removeErr } = await supabase.storage.from(BUCKET).remove([ruta1200, ruta600]);
+    if (removeErr) {
+      console.error("[HUERFANOS]", [ruta1200, ruta600], removeErr.message);
+    }
     return {
       ok: false,
       error: `Error al guardar el registro en la base de datos: ${insertError?.message}`,
@@ -241,7 +294,20 @@ export async function uploadFotoAction(
   }
 
   // 9. Mantener es_principal sincronizado con la foto de menor orden
-  await syncEsPrincipal(piezaId);
+  try {
+    await syncEsPrincipal(piezaId);
+  } catch (syncErr) {
+    console.error("[SYNC_PRINCIPAL]", piezaId, syncErr);
+    revalidatePath(`/admin/piezas/${piezaId}`);
+    revalidatePath("/admin/piezas");
+    revalidatePath("/catalogo");
+    revalidatePath(`/pieza`, "layout");
+    return {
+      ok: false,
+      error:
+        "La operación se completó, pero no se pudo actualizar la foto principal. Recarga la página.",
+    };
+  }
 
   revalidatePath(`/admin/piezas/${piezaId}`);
   revalidatePath("/admin/piezas");
@@ -275,26 +341,8 @@ export async function deleteFotoAction(
     };
   }
 
-  // Eliminar archivos de Storage (si existen rutas)
-  const archivos: string[] = [
-    media.ruta_1200,
-    media.ruta_600,
-  ].filter(Boolean) as string[];
-
-  if (archivos.length > 0) {
-    const { error: storageError } = await supabase.storage
-      .from(BUCKET)
-      .remove(archivos);
-
-    if (storageError) {
-      return {
-        ok: false,
-        error: `Error al eliminar los archivos de Storage: ${storageError.message}`,
-      };
-    }
-  }
-
-  // Eliminar la fila
+  // Eliminar primero la fila (operación crítica).
+  // Si falla, los archivos siguen intactos → no hay URLs rotas.
   const { error: deleteError } = await supabase
     .from("piezas_media")
     .delete()
@@ -307,8 +355,43 @@ export async function deleteFotoAction(
     };
   }
 
-  // Resincronizar es_principal para la pieza
-  await syncEsPrincipal(media.pieza_id);
+  // Eliminar archivos de Storage DESPUÉS de que la fila ya no existe.
+  // Un archivo huérfano es inofensivo; se registra pero no falla la acción
+  // (el usuario ya no puede ver el registro y no hay URLs rotas).
+  const archivos: string[] = [
+    media.ruta_1200,
+    media.ruta_600,
+  ].filter(Boolean) as string[];
+
+  if (archivos.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from(BUCKET)
+      .remove(archivos);
+
+    if (storageError) {
+      console.error(
+        `[HUERFANOS] mediaId=${mediaId} rutas=[${archivos.join(", ")}]:`,
+        storageError.message,
+      );
+    }
+  }
+
+  // Resincronizar es_principal para la pieza.
+  // Se ejecuta siempre, aunque el remove de Storage haya fallado.
+  try {
+    await syncEsPrincipal(media.pieza_id);
+  } catch (syncErr) {
+    console.error("[SYNC_PRINCIPAL]", media.pieza_id, syncErr);
+    revalidatePath(`/admin/piezas/${media.pieza_id}`);
+    revalidatePath("/admin/piezas");
+    revalidatePath("/catalogo");
+    revalidatePath(`/pieza`, "layout");
+    return {
+      ok: false,
+      error:
+        "La operación se completó, pero no se pudo actualizar la foto principal. Recarga la página.",
+    };
+  }
 
   revalidatePath(`/admin/piezas/${media.pieza_id}`);
   revalidatePath("/admin/piezas");
@@ -355,7 +438,19 @@ export async function reorderFotosAction(
     };
   }
 
-  await syncEsPrincipal(piezaId);
+  try {
+    await syncEsPrincipal(piezaId);
+  } catch (syncErr) {
+    console.error("[SYNC_PRINCIPAL]", piezaId, syncErr);
+    revalidatePath(`/admin/piezas/${piezaId}`);
+    revalidatePath("/catalogo");
+    revalidatePath(`/pieza`, "layout");
+    return {
+      ok: false,
+      error:
+        "La operación se completó, pero no se pudo actualizar la foto principal. Recarga la página.",
+    };
+  }
 
   revalidatePath(`/admin/piezas/${piezaId}`);
   revalidatePath("/catalogo");

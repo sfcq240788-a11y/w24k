@@ -4,8 +4,21 @@ import { removePieceFromCart } from "./actions";
 import Link from "next/link";
 import Image from "next/image";
 import { resolveImageUrl } from "@/lib/media-url";
+import { COMPRA_EN_LINEA_HABILITADA } from "@/lib/features";
 
 export default async function CarritoPage() {
+  if (!COMPRA_EN_LINEA_HABILITADA) {
+    return (
+      <div className="flex-1 flex flex-col w-full px-8 justify-center items-center gap-4 mx-auto min-h-screen">
+        <h1 className="font-serif text-3xl text-onyx">Carrito</h1>
+        <p className="font-sans text-taupe">Compras en línea próximamente.</p>
+        <Link href="/catalogo" className="bg-onyx text-white px-6 py-2 rounded hover:bg-gold transition-colors font-sans">
+          Volver al Catálogo
+        </Link>
+      </div>
+    );
+  }
+
   // Verificamos la sesión de forma independiente para distinguir dos casos
   // que getCart() no puede separar por sí solo (ambos devuelven null):
   //   1. Usuario no autenticado → invitación a iniciar sesión

@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/admin-guard";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
@@ -22,13 +22,14 @@ const piezaSchema = z.object({
 });
 
 export async function createPieceAction(
+  prevState: { error: string } | void,
   formData: FormData
 ): Promise<{ error: string } | void> {
   // Verificar admin antes de cualquier operación
   const guard = await assertAdmin();
   if (!guard.ok) return { error: guard.error };
 
-  const parseResult = piezaSchema.safeParse({
+  const rawData: Record<string, any> = {
     nombre: formData.get("nombre"),
     sku: formData.get("sku"),
     slug: formData.get("slug"),
@@ -38,8 +39,13 @@ export async function createPieceAction(
     peso_gramos: formData.get("peso_gramos"),
     tipo_pieza_id: formData.get("tipo_pieza_id"),
     metal_id: formData.get("metal_id"),
-    estado_publicacion: formData.get("estado_publicacion"),
-  });
+  };
+
+  if (formData.get("estado_publicacion") !== null) {
+    rawData.estado_publicacion = formData.get("estado_publicacion");
+  }
+
+  const parseResult = piezaSchema.safeParse(rawData);
 
   if (!parseResult.success) {
     // Zod v4: issues live at error.issues, not error.errors
@@ -49,7 +55,7 @@ export async function createPieceAction(
     };
   }
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   const { data: newPiece, error: insertError } = await supabase
     .from("piezas")
@@ -78,7 +84,7 @@ export async function togglePublicacion(
   const guard = await assertAdmin();
   if (!guard.ok) return { error: guard.error };
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
   const nuevo = actual === "publicada" ? "borrador" : "publicada";
 
   const { error } = await supabase

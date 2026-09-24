@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ProductGallery } from "@/components/ProductGallery";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { COMPRA_EN_LINEA_HABILITADA } from "@/lib/features";
 
 export const revalidate = 60;
 
@@ -99,27 +100,33 @@ export default async function PiezaPage({ params }: { params: Promise<{ slug: st
 
           {/* Actions */}
           <div className="pt-6 border-t border-line">
-            <form action={async () => {
-              "use server";
-              const { createClient } = await import('@/lib/supabase/server');
-              const { addPieceToCart } = await import('@/app/carrito/actions');
-              const { redirect } = await import('next/navigation');
-              const supabase = await createClient();
-              const { data: { user } } = await supabase.auth.getUser();
-              
-              if (!user) {
-                redirect('/login?message=Debes+iniciar+sesión+para+añadir+al+carrito');
-              }
-              
-              const formData = new FormData();
-              formData.append('pieza_id', piece.id);
-              await addPieceToCart(formData);
-              redirect('/carrito');
-            }}>
-              <button type="submit" className="w-full bg-onyx text-ivory font-sans uppercase tracking-[0.15em] text-sm py-4 hover:bg-gold transition-colors">
-                Añadir al Carrito
-              </button>
-            </form>
+            {COMPRA_EN_LINEA_HABILITADA ? (
+              <form action={async () => {
+                "use server";
+                const { createClient } = await import('@/lib/supabase/server');
+                const { addPieceToCart } = await import('@/app/carrito/actions');
+                const { redirect } = await import('next/navigation');
+                const supabase = await createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                if (!user) {
+                  redirect('/login?message=Debes+iniciar+sesión+para+añadir+al+carrito');
+                }
+                
+                const formData = new FormData();
+                formData.append('pieza_id', piece.id);
+                await addPieceToCart(formData);
+                redirect('/carrito');
+              }}>
+                <button type="submit" className="w-full bg-onyx text-ivory font-sans uppercase tracking-[0.15em] text-sm py-4 hover:bg-gold transition-colors">
+                  Añadir al Carrito
+                </button>
+              </form>
+            ) : (
+              <div className="w-full bg-onyx text-ivory text-center font-sans uppercase tracking-[0.15em] text-sm py-4 opacity-90">
+                Disponible en tienda — consulta precio arriba
+              </div>
+            )}
             <div className="text-center mt-4 font-sans text-xs text-taupe uppercase tracking-widest">
               • Certificado de autenticidad incluido
             </div>
