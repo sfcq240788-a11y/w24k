@@ -11,14 +11,25 @@ export async function login(formData: FormData) {
     password: formData.get("password") as string,
   };
 
-  const { error } = await supabase.auth.signInWithPassword(data);
+  const { data: authData, error } = await supabase.auth.signInWithPassword(data);
 
   if (error) {
     return { error: error.message };
   }
 
   revalidatePath("/", "layout");
-  redirect("/");
+  
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  const userEmail = (authData.user?.email ?? "").trim().toLowerCase();
+
+  if (userEmail && adminEmails.includes(userEmail)) {
+    redirect("/admin/piezas");
+  } else {
+    redirect("/");
+  }
 }
 
 export async function signup(formData: FormData) {

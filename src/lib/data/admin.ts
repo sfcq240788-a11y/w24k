@@ -48,8 +48,7 @@ export async function createPieceAction(
   const parseResult = piezaSchema.safeParse(rawData);
 
   if (!parseResult.success) {
-    // Zod v4: issues live at error.issues, not error.errors
-    const issues = parseResult.error.issues ?? (parseResult.error as any).errors ?? [];
+    const issues = parseResult.error.issues ?? [];
     return {
       error: issues.map((e: { message: string }) => e.message).join(", "),
     };

@@ -104,7 +104,7 @@ export default async function PiezaPage({ params }: { params: Promise<{ slug: st
               <form action={async () => {
                 "use server";
                 const { createClient } = await import('@/lib/supabase/server');
-                const { addPieceToCart } = await import('@/app/carrito/actions');
+                const { addPieceToCart } = await import('@/app/(tienda)/carrito/actions');
                 const { redirect } = await import('next/navigation');
                 const supabase = await createClient();
                 const { data: { user } } = await supabase.auth.getUser();

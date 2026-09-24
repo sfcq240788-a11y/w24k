@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  // @ts-expect-error API fijada en 2024-06-20; migrar a la versión del SDK al retomar checkout (POS)
   apiVersion: "2024-06-20",
 });
 
@@ -91,12 +92,14 @@ async function procesarPagoCompletado(
   //   WHERE id=$1 AND estado_inventario='disponible'
   // count=0 → doble venta → reembolso + fila en reembolsos con pago_id
   for (const item of pedidoItems) {
-    const { count, error: updateError } = await supabase
+    const { data, error: updateError } = await supabase
       .from("piezas")
       .update({ estado_inventario: "vendida" })
       .eq("id", item.pieza_id)
       .eq("estado_inventario", "disponible") // condición atómica
-      .select("id", { count: "exact", head: true });
+      .select("id");
+
+    const count = data?.length ?? 0;
 
     if (updateError) {
       throw new Error(`Error actualizando pieza ${item.pieza_id}: ${updateError.message}`);

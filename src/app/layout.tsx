@@ -4,41 +4,41 @@ import "./globals.css";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
+  weight: ["400", "500", "600"],
   subsets: ["latin"],
 });
 
 const inter = Inter({
   variable: "--font-inter",
+  weight: ["400", "500"],
   subsets: ["latin"],
 });
 
-const cormorant = Cormorant_Garamond({
-  variable: "--font-cormorant",
-  weight: ["400", "500", "600", "700"],
+const cormorantGaramond = Cormorant_Garamond({
+  variable: "--font-cormorant-garamond",
+  weight: ["400", "500"],
   style: ["normal", "italic"],
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "W24K | Alta Joyería",
+  title: "Workshop 24K | Alta Joyería",
   description: "Taller de Joyería de Talla Internacional",
+  icons: {
+    icon: "/workshop24k-favicon.svg",
+    apple: "/apple-icon.png",
+  },
 };
-
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="es"
-      className={`${playfair.variable} ${inter.variable} ${cormorant.variable} antialiased`}
+      className={`${playfair.variable} ${inter.variable} ${cormorantGaramond.variable} antialiased`}
+      data-scroll-behavior="smooth"
     >
       <body className="min-h-screen flex flex-col font-sans bg-ivory text-onyx">
-        <Header />
-        <main className="flex-grow flex flex-col">
-          {children}
-        </main>
-        <Footer />
+        {children}
       </body>
     </html>
   );

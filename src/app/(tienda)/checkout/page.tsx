@@ -16,7 +16,11 @@ export default async function CheckoutPage() {
       {/* Checkout Form */}
       <div className="flex-1">
         <h1 className="font-serif text-3xl mb-8 text-onyx border-b border-line pb-4">Dirección de Envío</h1>
-        <form action={submitCheckout} className="flex flex-col gap-4">
+        <form 
+          // TODO(POS)
+          action={submitCheckout as (formData: FormData) => void} 
+          className="flex flex-col gap-4"
+        >
           <div>
             <label className="text-sm font-sans text-taupe uppercase tracking-widest block mb-1">Destinatario</label>
             <input required name="destinatario" className="w-full border border-line p-2 font-sans focus:outline-none focus:border-gold" />

@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import { getSiteUrl } from "@/lib/site-url";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  // @ts-expect-error API fijada en 2024-06-20; migrar a la versión del SDK al retomar checkout (POS)
   apiVersion: "2024-06-20",
 });
 

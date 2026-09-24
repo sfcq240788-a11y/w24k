@@ -1,19 +1,23 @@
-import { signup } from "../auth/actions";
+"use client";
+
+import { useActionState } from "react";
+import { login } from "../auth/actions";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { COMPRA_EN_LINEA_HABILITADA } from "@/lib/features";
 
-export default async function RegisterPage({
-  searchParams,
+export function LoginForm({
+  resolvedParams,
+  compraHabilitada,
 }: {
-  searchParams: Promise<{ message?: string }>;
+  resolvedParams?: { message?: string };
+  compraHabilitada: boolean;
 }) {
-  if (!COMPRA_EN_LINEA_HABILITADA) {
-    // TODO(POS): registro de clientes
-    notFound();
-  }
+  const [state, action, isPending] = useActionState(
+    async (prevState: { error: string } | undefined, formData: FormData) => {
+      return await login(formData);
+    },
+    undefined
+  );
 
-  const resolvedParams = await searchParams;
   return (
     <div className="flex-1 flex flex-col w-full px-8 sm:max-w-md justify-center gap-2 mx-auto min-h-screen">
       <Link
@@ -37,8 +41,8 @@ export default async function RegisterPage({
         Volver
       </Link>
 
-      <form className="animate-in flex-1 flex flex-col w-full justify-center gap-2 text-foreground">
-        <h1 className="font-serif text-3xl mb-6 text-onyx text-center">Registro</h1>
+      <form action={action} className="animate-in flex-1 flex flex-col w-full justify-center gap-2 text-foreground">
+        <h1 className="font-serif text-3xl mb-6 text-onyx text-center">Iniciar Sesión</h1>
         
         <label className="text-md font-sans text-onyx" htmlFor="email">
           Email
@@ -62,16 +66,24 @@ export default async function RegisterPage({
         />
         
         <button
-          // TODO(POS): registro de clientes
-          formAction={signup as (formData: FormData) => void}
-          className="bg-onyx text-white rounded-md px-4 py-2 mb-2 font-sans hover:bg-gold transition-colors"
+          type="submit"
+          disabled={isPending}
+          className="bg-onyx text-white rounded-md px-4 py-2 mb-2 font-sans hover:bg-gold transition-colors disabled:opacity-50"
         >
-          Crear cuenta
+          {isPending ? "Entrando..." : "Entrar"}
         </button>
+        
+        {compraHabilitada && (
+          <div className="text-center text-sm font-sans text-taupe mt-4">
+            ¿No tienes cuenta? <Link href="/registro" className="text-gold underline hover:text-onyx">Regístrate</Link>
+          </div>
+        )}
 
-        <div className="text-center text-sm font-sans text-taupe mt-4">
-          ¿Ya tienes cuenta? <Link href="/login" className="text-gold underline hover:text-onyx">Inicia sesión</Link>
-        </div>
+        {state?.error && (
+          <p className="mt-4 p-4 bg-red-100 text-red-700 text-center text-sm font-sans">
+            {state.error}
+          </p>
+        )}
 
         {resolvedParams?.message && (
           <p className="mt-4 p-4 bg-line/20 text-onyx text-center text-sm font-sans">

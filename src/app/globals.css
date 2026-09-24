@@ -1,21 +1,46 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ivory: #F6F1E6;
-  --color-onyx: #15120E;
-  --color-gold: #B9925A;
+  --color-ivory: #f7f4ee;
+  --color-onyx: #181817;
+  --color-gold: #d4a537;
   --color-gold-light: #E4C88F;
   --color-taupe: #7B7264;
   --color-line: #DCD2BE;
   --color-rose: #C4988A;
+  --color-surface: #e9e4da;
+  --color-surface-alt: #e8e2d7;
+  --color-surface-muted: #ded8cc;
+  --color-surface-deep: #d4cdbf;
+  --color-hero-fallback: #cbc2b1;
+  --color-dark-fallback: #5b554a;
 
   --font-sans: var(--font-inter);
   --font-serif: var(--font-playfair);
-  --font-cormorant: var(--font-cormorant);
+  --font-editorial: var(--font-cormorant-garamond);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background-color: var(--color-ivory);
   color: var(--color-onyx);
   font-family: var(--font-inter), sans-serif;
+}
+
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--color-gold);
+  color: var(--color-onyx);
+}
+
+@layer base {
+  * {
+    @apply border-onyx/10 outline-onyx/30;
+  }
 }
