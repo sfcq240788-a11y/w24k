@@ -6,6 +6,8 @@
  */
 
 export const siteConfig = {
+  /** Nombre de la marca */
+  nombreMarca: "Workshop 24K",
   /** Correo de contacto público */
   email: "",
   /** Handle de Instagram (sin @) */
@@ -19,7 +21,7 @@ export const siteConfig = {
   /** Texto al fondo del menú móvil */
   textoMenuMovil: "Diseñado y hecho a mano en México",
   /** Orden base de las categorías en menús y tiles */
-  ordenCategorias: ["anillos", "collares", "aretes", "pulseras", "broches"],
+  ordenCategorias: ["anillos", "collares", "aretes", "pulseras", "colecciones"],
   /** Rangos de precio del catálogo */
   rangosPrecio: [
     { slug: "menos-20000", nombre: "Menos de $20,000", min: 0, max: 19999 },
