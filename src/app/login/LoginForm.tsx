@@ -102,7 +102,7 @@ export function LoginForm({
           )}
 
           {state?.error && (
-            <p className="mt-8 text-center text-[11px] text-[#A63A3A] tracking-wider bg-[#A63A3A]/10 py-3">
+            <p className="mt-8 text-center text-[11px] text-error tracking-wider bg-error/10 py-3">
               {state.error}
             </p>
           )}

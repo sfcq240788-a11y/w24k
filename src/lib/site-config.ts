@@ -21,7 +21,7 @@ export const siteConfig = {
   /** Texto al fondo del menú móvil */
   textoMenuMovil: "Diseñado y hecho a mano en México",
   /** Orden base de las categorías en menús y tiles */
-  ordenCategorias: ["anillos", "collares", "aretes", "pulseras", "colecciones"],
+  ordenCategorias: ["anillo", "collar", "arete", "pulsera", "broche"],
   /** Rangos de precio del catálogo */
   rangosPrecio: [
     { slug: "menos-20000", nombre: "Menos de $20,000", min: 0, max: 19999 },

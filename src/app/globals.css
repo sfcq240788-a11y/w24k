@@ -14,6 +14,7 @@
   --color-surface-deep: #d4cdbf;
   --color-hero-fallback: #cbc2b1;
   --color-dark-fallback: #5b554a;
+  --color-error: #A63A3A;
 
   --font-sans: var(--font-inter);
   --font-serif: var(--font-playfair);

@@ -54,13 +54,6 @@ export default async function AdminLayout({
               <Box size={14} className="text-gold transition-transform group-hover:scale-110" />
               Piezas
             </Link>
-            <Link
-              href="/admin/pedidos"
-              className="group flex items-center gap-3 rounded-md px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-onyx/70 transition-colors hover:bg-ivory hover:text-onyx"
-            >
-              <FileText size={14} className="text-gold transition-transform group-hover:scale-110" />
-              Pedidos
-            </Link>
           </nav>
 
           <div className="mt-8 border-t border-line pt-8">

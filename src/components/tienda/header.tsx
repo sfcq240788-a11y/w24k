@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Search, ShoppingBag, X } from "lucide-react";
+import { Menu, ShoppingBag, X } from "lucide-react";
 import { useState } from "react";
 import { siteConfig } from "@/lib/site-config";
 
@@ -45,11 +45,8 @@ export function Header({
             />
           </Link>
 
-          {/* Contenedor derecho (búsqueda y carrito) */}
+          {/* Contenedor derecho (carrito) */}
           <div className="absolute right-5 flex items-center gap-4 lg:right-8">
-            <button aria-label="Buscar" className="text-onyx">
-              <Search size={19} strokeWidth={1.4} />
-            </button>
             {mostrarCompra && (
               <Link href="/carrito" aria-label="Carrito" className="text-onyx">
                 <ShoppingBag size={19} strokeWidth={1.4} />
