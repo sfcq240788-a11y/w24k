@@ -5,14 +5,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { resolveImageUrl } from "@/lib/media-url";
 import { redirect } from "next/navigation";
+import { Plus, Eye, EyeOff, Edit2 } from "lucide-react";
 
 export default async function AdminPiezasPage() {
-  // Nivel 3 de protección en datos: los datos del admin incluyen piezas no
-  // publicadas y precios de mayoreo — se verifica antes de mostrarlos.
   const guard = await assertAdmin();
   if (!guard.ok) redirect("/");
 
-  // Usamos el cliente admin para leer todas las piezas sin filtro de RLS
   const supabase = createAdminClient();
   const { data: piezas } = await supabase
     .from("piezas")
@@ -20,100 +18,123 @@ export default async function AdminPiezasPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="font-serif text-3xl text-onyx">Catálogo (Admin)</h1>
+    <div className="mx-auto max-w-6xl animate-in fade-in duration-700">
+      <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="font-editorial text-4xl text-onyx md:text-5xl">Catálogo</h1>
+          <p className="mt-2 text-xs uppercase tracking-[0.2em] text-onyx/50">
+            Administración de Piezas
+          </p>
+        </div>
         <Link
           href="/admin/piezas/crear"
-          className="bg-onyx text-ivory px-6 py-2 uppercase font-sans tracking-widest text-sm hover:bg-gold transition-colors"
+          className="group flex w-max items-center gap-2 bg-onyx px-6 py-3 text-[10px] uppercase tracking-[0.2em] text-ivory transition-all hover:bg-gold"
         >
-          + Nueva Pieza
+          <Plus size={14} className="transition-transform group-hover:rotate-90" />
+          Nueva Pieza
         </Link>
       </div>
 
-      <div className="overflow-x-auto bg-white border border-line p-4 shadow-sm">
+      <div className="w-full">
         <table className="w-full text-left font-sans text-sm text-onyx">
           <thead>
-            <tr className="border-b border-line text-taupe uppercase tracking-widest text-xs">
-              <th className="pb-4 font-normal">Imagen</th>
-              <th className="pb-4 font-normal">Nombre</th>
+            <tr className="border-b border-line text-[10px] uppercase tracking-[0.15em] text-onyx/50">
+              <th className="pb-4 font-normal pl-4">Pieza</th>
               <th className="pb-4 font-normal">Precio</th>
               <th className="pb-4 font-normal">Estado</th>
-              <th className="pb-4 font-normal text-right">Acciones</th>
+              <th className="pb-4 pr-4 text-right font-normal">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {piezas?.map((p) => {
-              // Miniatura: variante 600 de la foto de menor orden
               const sortedMedia = [...(p.piezas_media ?? [])].sort(
                 (a, b) => (a.orden ?? 0) - (b.orden ?? 0)
               );
               const thumbUrl = sortedMedia[0]
                 ? resolveImageUrl(sortedMedia[0], "600")
                 : null;
+                
+              const isPublicada = p.estado_publicacion === "publicada";
 
               return (
-                <tr key={p.id} className="border-b border-line last:border-0">
-                  <td className="py-4">
-                    <div className="relative w-12 h-12 bg-ivory overflow-hidden">
-                      {thumbUrl ? (
-                        <Image
-                          src={thumbUrl}
-                          alt={p.nombre}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-onyx opacity-40" />
-                      )}
+                <tr 
+                  key={p.id} 
+                  className="group border-b border-line transition-colors hover:bg-surface-alt/50"
+                >
+                  <td className="py-5 pl-4">
+                    <div className="flex items-center gap-6">
+                      <div className="relative h-16 w-16 flex-shrink-0 bg-surface-muted overflow-hidden">
+                        {thumbUrl ? (
+                          <Image
+                            src={thumbUrl}
+                            alt={p.nombre}
+                            fill
+                            className="object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center bg-line/20 text-[10px] uppercase text-onyx/30 tracking-widest">
+                            No IMG
+                          </div>
+                        )}
+                      </div>
+                      <span className="font-editorial text-xl md:text-2xl">{p.nombre}</span>
                     </div>
                   </td>
-                  <td className="py-4 font-serif text-base">{p.nombre}</td>
-                  <td className="py-4">${p.precio.toLocaleString("es-MX")}</td>
-                  <td className="py-4">
-                    <span
-                      className={`px-2 py-1 text-xs uppercase tracking-widest ${
-                        p.estado_publicacion === "publicada"
-                          ? "bg-green-100 text-green-800"
-                          : p.estado_publicacion === "archivada"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {p.estado_publicacion}
-                    </span>
+                  <td className="py-5 text-sm tracking-wide">
+                    ${p.precio.toLocaleString("es-MX")}
                   </td>
-                  <td className="py-4 text-right space-x-4">
-                    <Link
-                      href={`/admin/piezas/${p.id}`}
-                      className="text-gold hover:text-onyx underline"
-                    >
-                      Editar / Fotos
-                    </Link>
-                    <form
-                      action={async () => {
-                        "use server";
-                        await togglePublicacion(p.id, p.estado_publicacion);
-                      }}
-                      className="inline"
-                    >
-                      <button
-                        type="submit"
-                        className="text-taupe hover:text-onyx underline"
+                  <td className="py-5">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          isPublicada ? "bg-green-600" : "bg-onyx/30"
+                        }`}
+                      />
+                      <span className="text-[10px] uppercase tracking-[0.15em] text-onyx/70">
+                        {p.estado_publicacion}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-5 pr-4 text-right">
+                    <div className="flex items-center justify-end gap-6">
+                      <Link
+                        href={`/admin/piezas/${p.id}`}
+                        className="text-onyx/40 transition-colors hover:text-gold"
+                        title="Editar pieza"
+                        aria-label="Editar pieza"
                       >
-                        {p.estado_publicacion === "publicada"
-                          ? "Despublicar"
-                          : "Publicar"}
-                      </button>
-                    </form>
+                        <Edit2 size={16} strokeWidth={1.5} />
+                      </Link>
+                      <form
+                        action={async () => {
+                          "use server";
+                          await togglePublicacion(p.id, p.estado_publicacion);
+                        }}
+                        className="inline"
+                      >
+                        <button
+                          type="submit"
+                          title={isPublicada ? "Ocultar" : "Publicar"}
+                          aria-label={isPublicada ? "Ocultar pieza" : "Publicar pieza"}
+                          className="text-onyx/40 transition-colors hover:text-gold"
+                        >
+                          {isPublicada ? (
+                            <EyeOff size={16} strokeWidth={1.5} />
+                          ) : (
+                            <Eye size={16} strokeWidth={1.5} />
+                          )}
+                        </button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               );
             })}
+            
             {piezas?.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-taupe">
-                  No hay piezas.
+                <td colSpan={4} className="py-20 text-center text-[10px] uppercase tracking-widest text-onyx/40">
+                  El catálogo está vacío.
                 </td>
               </tr>
             )}

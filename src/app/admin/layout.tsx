@@ -2,15 +2,14 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { logout } from "@/app/auth/actions";
+import { siteConfig } from "@/lib/site-config";
+import { Box, LogOut, FileText } from "lucide-react";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Nivel 2 de protección: el middleware ya redirige si no es admin,
-  // pero verificamos aquí también porque los layouts no se re-ejecutan
-  // en la navegación entre páginas hermanas del mismo segmento.
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,55 +30,69 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-ivory">
-      {/* Admin header bar */}
-      <header className="w-full bg-onyx text-ivory py-4 px-6 flex items-center justify-between">
-        <div className="flex items-center gap-8">
+    <div className="flex min-h-screen flex-col bg-ivory md:flex-row">
+      {/* Sidebar (Desktop) / Header (Mobile) */}
+      <aside className="flex w-full flex-col border-r border-line bg-surface md:w-64 md:min-h-screen">
+        <div className="flex items-center justify-between border-b border-line px-8 py-8 md:justify-center md:py-12">
           <Link
             href="/"
-            className="font-serif text-xl tracking-wider text-gold hover:text-gold-light transition-colors"
+            className="font-serif text-2xl tracking-wider text-onyx transition-colors hover:text-gold"
           >
             W24K
-          </Link>
-          <Link
-            href="/admin/piezas"
-            className="font-sans text-xs uppercase tracking-[0.1em] text-ivory hover:text-gold transition-colors"
-          >
-            Panel Admin
+            <span className="ml-2 font-sans text-[9px] uppercase tracking-widest text-gold md:block md:text-center md:ml-0 md:mt-2">
+              Admin
+            </span>
           </Link>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="font-sans text-xs text-taupe">{user.email}</span>
-          <form action={logout}>
-            <button
-              type="submit"
-              className="font-sans text-xs uppercase tracking-[0.1em] text-taupe hover:text-ivory transition-colors"
-            >
-              Salir
-            </button>
-          </form>
-        </div>
-      </header>
-      <div className="flex flex-1">
-        <aside className="w-64 bg-onyx text-ivory p-6">
-          <h2 className="font-serif text-2xl mb-8">Admin</h2>
-          <nav className="flex flex-col gap-4 font-sans text-sm tracking-widest uppercase">
+        
+        <div className="flex flex-1 flex-col justify-between px-6 py-8">
+          <nav className="flex flex-col gap-2">
             <Link
               href="/admin/piezas"
-              className="hover:text-gold transition-colors"
+              className="group flex items-center gap-3 rounded-md px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-onyx/70 transition-colors hover:bg-ivory hover:text-onyx"
             >
+              <Box size={14} className="text-gold transition-transform group-hover:scale-110" />
               Piezas
             </Link>
             <Link
               href="/admin/pedidos"
-              className="hover:text-gold transition-colors"
+              className="group flex items-center gap-3 rounded-md px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-onyx/70 transition-colors hover:bg-ivory hover:text-onyx"
             >
+              <FileText size={14} className="text-gold transition-transform group-hover:scale-110" />
               Pedidos
             </Link>
           </nav>
-        </aside>
-        <main className="flex-1 p-8">{children}</main>
-      </div>
+
+          <div className="mt-8 border-t border-line pt-8">
+            <p className="mb-4 truncate px-4 text-[10px] uppercase tracking-[0.1em] text-onyx/40">
+              {user.email}
+            </p>
+            <form action={logout}>
+              <button
+                type="submit"
+                className="group flex w-full items-center gap-3 rounded-md px-4 py-3 text-left text-[10px] uppercase tracking-[0.15em] text-onyx/70 transition-colors hover:bg-ivory hover:text-onyx"
+              >
+                <LogOut size={14} className="text-gold transition-transform group-hover:-translate-x-1" />
+                Cerrar Sesión
+              </button>
+            </form>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto bg-ivory">
+        {/* Top Spacer / Breadcrumb area (optional) */}
+        <header className="hidden h-24 items-center justify-end border-b border-line px-10 md:flex">
+          <p className="font-editorial text-sm italic text-onyx/50">
+            {siteConfig.nombreMarca} — Workspace
+          </p>
+        </header>
+        
+        <div className="px-6 py-10 md:px-12 md:py-14">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }

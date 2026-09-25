@@ -116,7 +116,7 @@ export default async function TiendaPage() {
             {topCategories.map((item) => (
               <VisualTile
                 key={item.slug}
-                image={item.foto || "/placeholder.svg"}
+                image={"/placeholder.svg"}
                 label={item.nombre_plural}
                 href={`/catalogo?tipo=${item.slug}`}
               />
@@ -143,7 +143,7 @@ export default async function TiendaPage() {
                 >
                   <div className="relative aspect-square overflow-hidden rounded-full bg-surface-deep">
                     <Image
-                      src={item.foto || "/placeholder.svg"}
+                      src={"/placeholder.svg"}
                       alt=""
                       fill
                       sizes="25vw"

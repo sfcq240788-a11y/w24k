@@ -9,24 +9,20 @@ export function TarjetaPieza({ pieza }: { pieza: PiezaCard }) {
   return (
     <Link href={`/pieza/${pieza.slug}`} className="group block">
       <div className="relative aspect-[4/5] overflow-hidden bg-surface">
-        {pieza.fotoPrincipal && (
-          <Image
-            src={pieza.fotoPrincipal}
-            alt={pieza.nombre}
-            fill
-            sizes="(max-width: 640px) 50vw, 25vw"
-            className="object-cover transition-opacity duration-500 group-hover:opacity-0"
-          />
-        )}
-        {pieza.fotoHover && (
-          <Image
-            src={pieza.fotoHover}
-            alt=""
-            fill
-            sizes="(max-width: 640px) 50vw, 25vw"
-            className="object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-          />
-        )}
+        <Image
+          src="/placeholder.svg"
+          alt={pieza.nombre}
+          fill
+          sizes="(max-width: 640px) 50vw, 25vw"
+          className="object-cover transition-opacity duration-500 group-hover:opacity-0"
+        />
+        <Image
+          src="/placeholder.svg"
+          alt=""
+          fill
+          sizes="(max-width: 640px) 50vw, 25vw"
+          className="object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        />
         {estado && (
           <span className="absolute left-3 top-3 bg-ivory px-2.5 py-1 text-[9px] uppercase tracking-[0.15em] text-onyx">
             {estado}

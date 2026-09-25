@@ -3,6 +3,8 @@
 import { useActionState } from "react";
 import { login } from "../auth/actions";
 import Link from "next/link";
+import Image from "next/image";
+import { ArrowLeft } from "lucide-react";
 
 export function LoginForm({
   resolvedParams,
@@ -19,78 +21,99 @@ export function LoginForm({
   );
 
   return (
-    <div className="flex-1 flex flex-col w-full px-8 sm:max-w-md justify-center gap-2 mx-auto min-h-screen">
-      <Link
-        href="/"
-        className="absolute left-8 top-8 py-2 px-4 rounded-md no-underline text-foreground bg-btn-background hover:bg-btn-background-hover flex items-center group text-sm"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1"
-        >
-          <polyline points="15 18 9 12 15 6" />
-        </svg>{" "}
-        Volver
-      </Link>
+    <div className="flex min-h-screen bg-ivory">
+      {/* Sección Izquierda: Imagen (Solo en Desktop) */}
+      <div className="relative hidden w-1/2 md:block bg-surface-muted overflow-hidden">
+        <Image
+          src="/workshop24k-isotipo.svg"
+          alt="Workshop 24K"
+          fill
+          priority
+          className="absolute inset-0 object-contain p-12 grayscale-[15%] opacity-90"
+        />
+        <div className="absolute inset-0 bg-onyx/10" />
+      </div>
 
-      <form action={action} className="animate-in flex-1 flex flex-col w-full justify-center gap-2 text-foreground">
-        <h1 className="font-serif text-3xl mb-6 text-onyx text-center">Iniciar Sesión</h1>
-        
-        <label className="text-md font-sans text-onyx" htmlFor="email">
-          Email
-        </label>
-        <input
-          className="rounded-md px-4 py-2 bg-inherit border mb-6 border-line font-sans focus:outline-none focus:border-gold"
-          name="email"
-          placeholder="tu@correo.com"
-          required
-        />
-        
-        <label className="text-md font-sans text-onyx" htmlFor="password">
-          Contraseña
-        </label>
-        <input
-          className="rounded-md px-4 py-2 bg-inherit border mb-6 border-line font-sans focus:outline-none focus:border-gold"
-          type="password"
-          name="password"
-          placeholder="••••••••"
-          required
-        />
-        
-        <button
-          type="submit"
-          disabled={isPending}
-          className="bg-onyx text-white rounded-md px-4 py-2 mb-2 font-sans hover:bg-gold transition-colors disabled:opacity-50"
-        >
-          {isPending ? "Entrando..." : "Entrar"}
-        </button>
-        
-        {compraHabilitada && (
-          <div className="text-center text-sm font-sans text-taupe mt-4">
-            ¿No tienes cuenta? <Link href="/registro" className="text-gold underline hover:text-onyx">Regístrate</Link>
+      {/* Sección Derecha: Formulario */}
+      <div className="relative flex w-full flex-col items-center justify-center p-8 md:w-1/2 md:px-20 lg:px-32">
+        <div className="absolute left-8 top-8">
+          <Link
+            href="/"
+            className="group flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-onyx/50 transition-colors hover:text-onyx"
+          >
+            <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
+            Volver a la tienda
+          </Link>
+        </div>
+
+        <form action={action} className="w-full max-w-sm animate-in flex-col gap-6 text-onyx">
+          <div className="mb-12 text-center">
+            <h1 className="font-editorial text-4xl leading-none text-onyx md:text-5xl">
+              Bienvenido
+            </h1>
+            <p className="mt-4 text-xs tracking-widest text-onyx/50 uppercase">
+              Accede a tu cuenta
+            </p>
           </div>
-        )}
 
-        {state?.error && (
-          <p className="mt-4 p-4 bg-red-100 text-red-700 text-center text-sm font-sans">
-            {state.error}
-          </p>
-        )}
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] uppercase tracking-[0.15em] text-onyx/70" htmlFor="email">
+                Correo Electrónico
+              </label>
+              <input
+                className="w-full border-b border-line bg-transparent px-0 py-2 text-sm text-onyx placeholder:text-onyx/30 focus:border-gold focus:outline-none transition-colors"
+                name="email"
+                type="email"
+                placeholder="ejemplo@correo.com"
+                required
+              />
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] uppercase tracking-[0.15em] text-onyx/70" htmlFor="password">
+                Contraseña
+              </label>
+              <input
+                className="w-full border-b border-line bg-transparent px-0 py-2 text-sm text-onyx placeholder:text-onyx/30 focus:border-gold focus:outline-none transition-colors"
+                type="password"
+                name="password"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+          </div>
 
-        {resolvedParams?.message && (
-          <p className="mt-4 p-4 bg-line/20 text-onyx text-center text-sm font-sans">
-            {resolvedParams.message}
-          </p>
-        )}
-      </form>
+          <button
+            type="submit"
+            disabled={isPending}
+            className="mt-10 flex w-full items-center justify-center bg-onyx px-4 py-4 text-[10px] uppercase tracking-[0.2em] text-ivory transition-colors hover:bg-gold disabled:opacity-50"
+          >
+            {isPending ? "Autenticando..." : "Ingresar"}
+          </button>
+          
+          {compraHabilitada && (
+            <div className="mt-6 text-center text-xs text-onyx/50">
+              ¿No tienes cuenta?{" "}
+              <Link href="/registro" className="text-gold transition-colors hover:text-onyx">
+                Crear una cuenta
+              </Link>
+            </div>
+          )}
+
+          {state?.error && (
+            <p className="mt-8 text-center text-[11px] text-[#A63A3A] tracking-wider bg-[#A63A3A]/10 py-3">
+              {state.error}
+            </p>
+          )}
+
+          {resolvedParams?.message && (
+            <p className="mt-8 text-center text-[11px] text-onyx/70 tracking-wider bg-line/30 py-3">
+              {resolvedParams.message}
+            </p>
+          )}
+        </form>
+      </div>
     </div>
   );
 }
