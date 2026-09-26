@@ -20,7 +20,8 @@ export type PiezaCard = {
 export type PiezaDetalle = PiezaCard & {
   descripcion: string | null;
   pesoGramos: number | null;
-  fotos: { url: string; tipoToma: string }[];
+  fotos: { url: string; tipoToma: string; ruta1200?: string; ruta600?: string }[];
+  piedras: { nombre: string; cantidad: number | null; kilataje: number | null }[];
 };
 
 /** Formateador de precios en MXN. */

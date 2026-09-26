@@ -270,7 +270,9 @@ export async function getCatalogData(params: {
   return { pieces: mapped, count: count ?? 0 };
 }
 
-export async function getPieceBySlug(slug: string) {
+import type { PiezaDetalle } from "@/lib/types/tienda";
+
+export async function getPieceBySlug(slug: string): Promise<{ piece: PiezaDetalle | null, error: any }> {
   const { data, error } = await supabase
     .from("piezas")
     .select(
@@ -280,23 +282,88 @@ export async function getPieceBySlug(slug: string) {
       nombre, 
       descripcion, 
       precio, 
-      peso_gramos, 
-      metal_id,
+      peso_gramos,
+      estado_inventario,
       metales ( nombre ),
+      tipos_pieza ( nombre_plural ),
       piezas_piedras (
         cantidad,
         kilataje_piedra,
-        color,
-        claridad,
-        piedras ( nombre ),
-        cortes ( nombre )
+        piedras ( nombre, slug )
       ),
-      piezas_media ( url, ruta_1200, ruta_600, tipo_toma, orden )
+      piezas_media ( url, ruta_1200, ruta_600, tipo_toma, orden, tipo, es_principal )
     `
     )
     .eq("slug", slug)
     .eq("estado_publicacion", "publicada")
+    .eq("piezas_media.tipo", "foto")
     .single();
 
-  return { piece: data, error };
+  if (error || !data) {
+    return { piece: null, error };
+  }
+
+  // Type assertion or robust mapping
+  const row = data as any;
+
+  // Process photos
+  const media = Array.isArray(row.piezas_media) ? row.piezas_media : [];
+  const fotosRow = media.filter((m: any) => m.tipo === "foto");
+  const sortedFotos = [...fotosRow].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+  
+  const principalObj = sortedFotos.find((m: any) => m.es_principal) || sortedFotos[0];
+  const hoverObj = sortedFotos.find((m: any) => m !== principalObj) || sortedFotos[1];
+
+  const fotoPrincipal = principalObj ? resolveImageUrl(principalObj, "1200") : null;
+  const fotoHover = hoverObj ? resolveImageUrl(hoverObj, "600") : null;
+
+  // Process stones (excluding "ninguna")
+  const rawPiedras = Array.isArray(row.piezas_piedras) ? row.piezas_piedras : [];
+  const piedras = rawPiedras
+    .map((p: any) => {
+      const pNameObj = Array.isArray(p.piedras) ? p.piedras[0] : p.piedras;
+      return {
+        nombre: pNameObj?.nombre || "",
+        slug: pNameObj?.slug || "",
+        cantidad: p.cantidad,
+        kilataje: p.kilataje_piedra
+      };
+    })
+    .filter((p: any) => p.slug !== "ninguna" && p.slug !== "sin-piedra" && p.nombre !== "");
+
+  const piece: PiezaDetalle = {
+    id: row.id,
+    slug: row.slug,
+    nombre: row.nombre,
+    precio: row.precio,
+    metal: row.metales ? (Array.isArray(row.metales) ? row.metales[0]?.nombre : row.metales.nombre) : "Metal",
+    tipoPieza: row.tipos_pieza ? (Array.isArray(row.tipos_pieza) ? row.tipos_pieza[0]?.nombre_plural : row.tipos_pieza.nombre_plural) : "Pieza",
+    estadoInventario: row.estado_inventario,
+    fotoPrincipal,
+    fotoHover,
+    descripcion: row.descripcion,
+    pesoGramos: row.peso_gramos,
+    fotos: sortedFotos.map((m: any) => ({
+      url: resolveImageUrl(m, "1200") || m.url,
+      tipoToma: m.tipo_toma || "f",
+      ruta1200: m.ruta_1200,
+      ruta600: m.ruta_600
+    })),
+    piedras: piedras
+  };
+
+  return { piece, error: null };
+}
+
+export async function getRelatedPieces(pieza: PiezaDetalle): Promise<PiezaCard[]> {
+  const { pieces } = await getStorefrontData();
+  const available = pieces.filter((p: PiezaCard) => p.id !== pieza.id);
+  const related = available.filter((p: PiezaCard) => p.metal === pieza.metal || p.tipoPieza === pieza.tipoPieza);
+  
+  if (related.length >= 4) {
+    return related.slice(0, 4);
+  }
+  
+  const others = available.filter((p: PiezaCard) => p.metal !== pieza.metal && p.tipoPieza !== pieza.tipoPieza);
+  return [...related, ...others].slice(0, 4);
 }
