@@ -1,138 +1,123 @@
-import { getPieceBySlug } from "@/lib/data/piezas";
-import { notFound } from "next/navigation";
-import { ProductGallery } from "@/components/ProductGallery";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
-import { COMPRA_EN_LINEA_HABILITADA } from "@/lib/features";
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { ChevronRight } from 'lucide-react'
+import { TarjetaPieza } from '@/components/tienda/tarjeta-pieza'
+import { GaleriaPieza } from '@/components/tienda/galeria-pieza'
+import { DetalleCompra } from '@/components/tienda/detalle-compra'
+import { formatoMXN } from '@/lib/types/tienda'
+import { getPieceBySlug, getRelatedPieces } from '@/lib/data/piezas'
+import { Metadata } from 'next'
 
 export const revalidate = 60;
 
-export default async function PiezaPage({ params }: { params: Promise<{ slug: string }> }) {
-  const resolvedParams = await params;
+type Params = Promise<{ slug: string }>;
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { slug } = await params;
+  const { piece } = await getPieceBySlug(slug);
+
+  if (!piece) return {};
+
+  const descripcionCorta = piece.descripcion ? piece.descripcion.substring(0, 155) : '';
+
+  return {
+    title: piece.nombre,
+    description: descripcionCorta,
+    openGraph: {
+      images: piece.fotoPrincipal ? [piece.fotoPrincipal] : [],
+    },
+  };
+}
+
+export default async function PiezaPage({ params }: { params: Params }) {
+  const { slug } = await params
+  const { piece: pieza, error } = await getPieceBySlug(slug)
   
-  const { piece, error } = await getPieceBySlug(resolvedParams.slug);
+  if (error || !pieza) notFound()
 
-  if (error || !piece) {
-    notFound();
-  }
-
-  // Ordenar por orden ASC y pasar los objetos completos a ProductGallery
-  // para que pueda usar resolveImageUrl con el tamaño correcto.
-  const media = piece.piezas_media
-    ? (Array.isArray(piece.piezas_media) ? piece.piezas_media : [piece.piezas_media])
-    : [];
-  const sortedMedia = media.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
-
-  const metalName = piece.metales ? (Array.isArray(piece.metales) ? piece.metales[0]?.nombre : piece.metales.nombre) : 'Oro';
-  const piedras = piece.piezas_piedras ? (Array.isArray(piece.piezas_piedras) ? piece.piezas_piedras : [piece.piezas_piedras]) : [];
+  const relacionadas = await getRelatedPieces(pieza)
+  const vendida = pieza.estadoInventario === 'vendida'
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto px-6 md:px-12 py-12">
-      {/* Back link */}
-      <Link href="/catalogo" className="inline-flex items-center space-x-2 text-taupe hover:text-gold transition-colors mb-10 group">
-        <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-        <span className="font-sans text-xs uppercase tracking-widest">Volver al catálogo</span>
-      </Link>
-
-      <div className="flex flex-col lg:flex-row gap-16 lg:gap-24">
-        {/* Gallery */}
-        <div className="w-full lg:w-3/5">
-          <ProductGallery images={sortedMedia} alt={piece.nombre} />
-        </div>
-
-        {/* Specs and details */}
-        <div className="w-full lg:w-2/5 flex flex-col">
-          <div className="mb-4">
-            <h1 className="font-serif text-3xl md:text-4xl text-onyx mb-2 leading-tight">
-              {piece.nombre}
-            </h1>
-            <p className="font-sans text-sm text-taupe uppercase tracking-widest">Ref: {piece.slug}</p>
-          </div>
-
-          <div className="my-8 pb-8 border-b border-line border-opacity-30">
-            <p className="font-serif font-semibold text-3xl text-onyx tracking-wide">
-              ${piece.precio.toLocaleString('es-MX')}
-            </p>
-          </div>
-
-          {/* Description */}
-          <div className="mb-12">
-            <p className="font-sans text-onyx text-opacity-80 leading-relaxed text-sm">
-              {piece.descripcion || "Una pieza de excepcional belleza y diseño artesanal, forjada con los más altos estándares de calidad."}
-            </p>
-          </div>
-
-          {/* Specs Table */}
-          <div className="flex-grow">
-            <h3 className="font-sans text-xs uppercase tracking-[0.2em] text-onyx mb-6 font-semibold">Especificaciones</h3>
-            
-            <div className="space-y-4">
-              <div className="flex justify-between py-2 border-b border-line border-opacity-20">
-                <span className="font-sans text-xs uppercase text-taupe">Metal</span>
-                <span className="font-sans text-sm text-onyx">{metalName || '-'}</span>
-              </div>
-              
-              <div className="flex justify-between py-2 border-b border-line border-opacity-20">
-                <span className="font-sans text-xs uppercase text-taupe">Peso Estimado</span>
-                <span className="font-sans text-sm text-onyx">{piece.peso_gramos ? `${piece.peso_gramos}g` : '-'}</span>
-              </div>
-
-              {/* Stones Loop */}
-              {piedras.map((p, idx: number) => {
-                const stoneName = p.piedras ? (Array.isArray(p.piedras) ? p.piedras[0]?.nombre : p.piedras.nombre) : '-';
-                const cutName = p.cortes ? (Array.isArray(p.cortes) ? p.cortes[0]?.nombre : p.cortes.nombre) : '';
-                return (
-                  <div key={idx} className="flex justify-between py-2 border-b border-line border-opacity-20">
-                    <span className="font-sans text-xs uppercase text-taupe">Piedra {piedras.length > 1 ? idx + 1 : ''}</span>
-                    <div className="text-right">
-                      <div className="font-sans text-sm text-onyx">{stoneName} {cutName ? `(${cutName})` : ''}</div>
-                      {(p.cantidad || p.kilataje_piedra) && (
-                        <div className="font-sans text-xs text-taupe mt-1">
-                          {p.cantidad ? `${p.cantidad} pz` : ''} {p.cantidad && p.kilataje_piedra ? '•' : ''} {p.kilataje_piedra ? `${p.kilataje_piedra} ct` : ''}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+    <main className="mx-auto max-w-[1400px] px-5 py-8 md:px-12 md:py-12">
+      <nav aria-label="Breadcrumb" className="mb-10 flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-onyx/45">
+        <Link href="/" className="hover:text-gold">Inicio</Link>
+        <ChevronRight size={12} />
+        <Link href="/catalogo" className="hover:text-gold">Catálogo</Link>
+        <ChevronRight size={12} />
+        <span className="max-w-[180px] truncate text-onyx/75">{pieza.nombre}</span>
+      </nav>
+      
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)] lg:gap-20">
+        <GaleriaPieza nombre={pieza.nombre} fotos={pieza.fotos} />
+        
+        <section className="self-start lg:sticky lg:top-8">
+          {vendida && (
+            <div className="mb-6 border-y border-gold/50 bg-gold/10 px-4 py-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-gold">Pieza vendida</p>
+              <p className="mt-2 font-editorial text-lg text-onyx/70">Esta pieza ya encontró dueño.</p>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="pt-6 border-t border-line">
-            {COMPRA_EN_LINEA_HABILITADA ? (
-              <form action={async () => {
-                "use server";
-                const { createClient } = await import('@/lib/supabase/server');
-                const { addPieceToCart } = await import('@/app/(tienda)/carrito/actions');
-                const { redirect } = await import('next/navigation');
-                const supabase = await createClient();
-                const { data: { user } } = await supabase.auth.getUser();
-                
-                if (!user) {
-                  redirect('/login?message=Debes+iniciar+sesión+para+añadir+al+carrito');
-                }
-                
-                const formData = new FormData();
-                formData.append('pieza_id', piece.id);
-                await addPieceToCart(formData);
-                redirect('/carrito');
-              }}>
-                <button type="submit" className="w-full bg-onyx text-ivory font-sans uppercase tracking-[0.15em] text-sm py-4 hover:bg-gold transition-colors">
-                  Añadir al Carrito
-                </button>
-              </form>
-            ) : (
-              <div className="w-full bg-onyx text-ivory text-center font-sans uppercase tracking-[0.15em] text-sm py-4 opacity-90">
-                Disponible en tienda — consulta precio arriba
+          )}
+          
+          <p className="mb-4 text-[10px] uppercase tracking-[0.22em] text-onyx/45">{pieza.tipoPieza}</p>
+          <h1 className="font-serif text-5xl leading-[0.95] tracking-[-0.03em] md:text-6xl">{pieza.nombre}</h1>
+          <p className="mt-6 text-xl text-onyx/80">{formatoMXN.format(pieza.precio)}</p>
+          
+          <div className="mt-8 border-y border-onyx/12 py-6">
+            <dl className="grid grid-cols-2 gap-y-5 text-sm">
+              <div>
+                <dt className="text-[10px] uppercase tracking-[0.15em] text-onyx/45">Metal</dt>
+                <dd className="mt-1 text-onyx/80">{pieza.metal}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] uppercase tracking-[0.15em] text-onyx/45">Peso</dt>
+                <dd className="mt-1 text-onyx/80">{pieza.pesoGramos ? `${pieza.pesoGramos} g` : 'Por confirmar'}</dd>
+              </div>
+            </dl>
+            
+            {pieza.piedras.length > 0 && (
+              <div className="mt-6">
+                <dt className="text-[10px] uppercase tracking-[0.15em] text-onyx/45">Piedras</dt>
+                <ul className="mt-2 space-y-1 text-sm text-onyx/80">
+                  {pieza.piedras.map((piedra) => (
+                    <li key={piedra.nombre}>
+                      {piedra.cantidad ? `${piedra.cantidad} × ` : ''}{piedra.nombre}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
-            <div className="text-center mt-4 font-sans text-xs text-taupe uppercase tracking-widest">
-              • Certificado de autenticidad incluido
-            </div>
           </div>
-        </div>
+          
+          {pieza.descripcion && (
+            <div className="pt-7">
+              <h2 className="font-serif text-2xl">Sobre la pieza</h2>
+              <p className="mt-4 font-editorial text-xl leading-relaxed text-onyx/65">{pieza.descripcion}</p>
+            </div>
+          )}
+          
+          <DetalleCompra pieza={pieza} />
+        </section>
       </div>
-    </div>
+      
+      {relacionadas.length > 0 && (
+        <section className="mt-24 border-t border-onyx/12 pt-12 md:mt-32">
+          <div className="mb-8 flex items-end justify-between">
+            <div>
+              <p className="mb-3 text-[10px] uppercase tracking-[0.22em] text-gold">Descubre más</p>
+              <h2 className="font-serif text-4xl">También te puede gustar</h2>
+            </div>
+            <Link href="/catalogo" className="hidden text-[10px] uppercase tracking-[0.15em] text-onyx/55 underline underline-offset-4 md:block">
+              Ver catálogo
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-4 md:gap-x-6">
+            {relacionadas.map((item) => (
+              <TarjetaPieza key={item.id} pieza={item} />
+            ))}
+          </div>
+        </section>
+      )}
+    </main>
   );
 }
