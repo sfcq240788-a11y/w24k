@@ -10,10 +10,14 @@ export type TipoPiezaRow = Database["public"]["Tables"]["tipos_pieza"]["Row"] & 
 // Mapeador central de BD a PiezaCard
 function mapToPiezaCard(row: any): PiezaCard | null {
   const media = Array.isArray(row.piezas_media) ? row.piezas_media : [];
-  const sortedMedia = [...media].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+  const fotos = media.filter((m: any) => m.tipo === "foto");
+  const sortedFotos = [...fotos].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
   
-  const fotoPrincipal = sortedMedia.length > 0 ? resolveImageUrl(sortedMedia[0], "600") : null;
-  const fotoHover = sortedMedia.length > 1 ? resolveImageUrl(sortedMedia[1], "600") : null;
+  const principalObj = sortedFotos.find((m: any) => m.es_principal) || sortedFotos[0];
+  const hoverObj = sortedFotos.find((m: any) => m !== principalObj) || sortedFotos[1];
+
+  const fotoPrincipal = principalObj ? resolveImageUrl(principalObj, "600") : null;
+  const fotoHover = hoverObj ? resolveImageUrl(hoverObj, "600") : null;
 
   if (!fotoPrincipal) return null;
 
@@ -37,10 +41,11 @@ export async function getFeaturedPieces(): Promise<PiezaCard[]> {
       id, nombre, precio, slug, estado_inventario,
       metales ( nombre ),
       tipos_pieza ( nombre_plural ),
-      piezas_media(url, ruta_600, orden)
+      piezas_media!inner ( url, ruta_600, orden, tipo, es_principal )
     `)
     .eq("estado_publicacion", "publicada")
     .eq("destacada", true)
+    .eq("piezas_media.tipo", "foto")
     .limit(8);
 
   if (error || !data) {
@@ -60,10 +65,11 @@ export async function getStorefrontData() {
       id, slug, nombre, precio, estado_inventario, created_at,
       metales ( id, nombre, slug ),
       tipos_pieza ( id, nombre, slug, nombre_plural ),
-      piezas_media(url, ruta_600, orden)
+      piezas_media!inner ( url, ruta_600, orden, tipo, es_principal )
     `)
     .eq("estado_publicacion", "publicada")
-    .eq("estado_inventario", "disponible");
+    .eq("estado_inventario", "disponible")
+    .eq("piezas_media.tipo", "foto");
 
   if (error || !pieces) {
     console.error("Error fetching storefront data:", error);
@@ -126,10 +132,11 @@ export async function getCatalogOptions() {
       piezas_piedras (
         piedras ( slug, nombre )
       ),
-      piezas_media ( url )
+      piezas_media!inner ( url, tipo, es_principal )
     `)
     .eq("estado_publicacion", "publicada")
-    .eq("estado_inventario", "disponible");
+    .eq("estado_inventario", "disponible")
+    .eq("piezas_media.tipo", "foto");
 
   if (error || !data) {
     return { types: [], metals: [], stones: [], prices: [] };
@@ -196,10 +203,11 @@ export async function getCatalogData(params: {
       id, slug, nombre, precio, estado_inventario, created_at,
       metales!inner ( nombre, slug ),
       tipos_pieza!inner ( nombre_plural, slug ),
-      piezas_media ( url, ruta_600, orden )
+      piezas_media!inner ( url, ruta_600, orden, tipo, es_principal )
     `, { count: 'exact' })
     .eq("estado_publicacion", "publicada")
-    .eq("estado_inventario", "disponible");
+    .eq("estado_inventario", "disponible")
+    .eq("piezas_media.tipo", "foto");
 
   if (params.tipo) {
     query = query.eq("tipos_pieza.slug", params.tipo);
