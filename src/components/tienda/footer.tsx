@@ -53,20 +53,23 @@ export function Footer() {
           </div>
 
           {/* Contacto */}
-          <div>
-            <p className="mb-5 text-[10px] uppercase tracking-[0.2em] text-onyx/45">
-              Contacto
-            </p>
-            <div className="flex flex-col gap-3 text-sm text-onyx/75">
-              {email && <span>{email}</span>}
-              {ciudad && <span>{ciudad}</span>}
-              {instagram && (
-                <span className="flex items-center gap-2">
-                  <Camera size={15} /> @{instagram}
-                </span>
-              )}
+          {(email || ciudad || instagram || siteConfig.whatsapp) && (
+            <div>
+              <p className="mb-5 text-[10px] uppercase tracking-[0.2em] text-onyx/45">
+                Contacto
+              </p>
+              <div className="flex flex-col gap-3 text-sm text-onyx/75">
+                {email && <span>{email}</span>}
+                {ciudad && <span>{ciudad}</span>}
+                {instagram && (
+                  <span className="flex items-center gap-2">
+                    <Camera size={15} /> @{instagram}
+                  </span>
+                )}
+                {siteConfig.whatsapp && <span>{siteConfig.whatsapp}</span>}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Bottom bar */}

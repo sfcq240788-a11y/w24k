@@ -233,7 +233,7 @@ export default async function CatalogoPage({
             Workshop 24K
           </p>
           <h1 className="font-serif text-5xl tracking-[-0.03em] md:text-7xl">
-            Colección
+            Catálogo
           </h1>
           <p className="mt-3 text-sm text-onyx/55">{options.totalCount} piezas</p>
         </div>

@@ -41,3 +41,5 @@ registrada aquí se revierte sin instrucción explícita del dueño del proyecto
 - 2026-09-25 — /taller — diseño centrado, desviación aprobada de v0.
 - 2026-09-25 — admin y login — rediseño propio (no existían en v0).
 - 2026-09-25 — tienda — se revierten placeholders fijos y botón de búsqueda.
+- 2026-09-30 — footer — columna Contacto oculta si no hay datos de contacto.
+- 2026-09-30 — 404 — página propia con el estilo del estado vacío del catálogo.

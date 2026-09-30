@@ -53,11 +53,11 @@ export function GaleriaPieza({
       </div>
 
       {/* Main image */}
-      <div className="group relative aspect-[4/5] overflow-hidden bg-surface">
+      <div className="order-1 group relative aspect-[4/5] overflow-hidden bg-surface md:order-2">
         <Image
           key={foto.url + active}
           src={foto.url}
-          alt={`${nombre}, vista ${nombresToma[foto.tipoToma] ?? foto.tipoToma}`}
+          alt={foto.tipoToma ? `${nombre}, vista ${nombresToma[foto.tipoToma] ?? foto.tipoToma}` : `vista ${active + 1}`}
           fill
           priority
           sizes="(max-width: 768px) 100vw, 55vw"

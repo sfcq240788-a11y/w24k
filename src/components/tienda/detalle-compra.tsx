@@ -2,15 +2,7 @@ import { COMPRA_EN_LINEA_HABILITADA } from "@/lib/features";
 import type { PiezaDetalle } from "@/lib/types/tienda";
 
 export function DetalleCompra({ pieza }: { pieza: PiezaDetalle }) {
-  if (!COMPRA_EN_LINEA_HABILITADA) {
-    return (
-      <div className="mt-8 w-full bg-onyx text-ivory text-center font-sans uppercase tracking-[0.15em] text-[11px] py-4 opacity-90">
-        Disponible en tienda — consulta precio
-      </div>
-    );
-  }
-
-  if (pieza.estadoInventario !== "disponible") {
+  if (!COMPRA_EN_LINEA_HABILITADA || pieza.estadoInventario !== "disponible") {
     return null;
   }
 
