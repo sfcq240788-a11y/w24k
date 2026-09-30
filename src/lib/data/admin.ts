@@ -97,3 +97,27 @@ export async function togglePublicacion(
 
   revalidatePath("/admin/piezas");
 }
+
+export async function toggleDestacada(
+  id: string,
+  actual: boolean
+): Promise<{ error: string } | void> {
+  const guard = await assertAdmin();
+  if (!guard.ok) return { error: guard.error };
+
+  const supabase = await createAdminClient();
+  const nuevo = !actual;
+
+  const { error } = await supabase
+    .from("piezas")
+    .update({ destacada: nuevo })
+    .eq("id", id);
+
+  if (error) {
+    return { error: `Error al cambiar estado destacada: ${error.message}` };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/catalogo");
+  revalidatePath("/admin/piezas");
+}

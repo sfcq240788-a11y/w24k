@@ -44,8 +44,10 @@ export async function getFeaturedPieces(): Promise<PiezaCard[]> {
       piezas_media!inner ( url, ruta_600, orden, tipo, es_principal )
     `)
     .eq("estado_publicacion", "publicada")
-    .eq("destacada", true)
+    .eq("estado_inventario", "disponible")
     .eq("piezas_media.tipo", "foto")
+    .order("destacada", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
     .limit(8);
 
   if (error || !data) {
@@ -247,7 +249,7 @@ export async function getCatalogData(params: {
     query = query.order("created_at", { ascending: false });
   } else {
     // Destacadas: true primero
-    query = query.order("destacada", { ascending: false }).order("created_at", { ascending: false });
+    query = query.order("destacada", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false });
   }
 
   const page = Math.max(1, params.page || 1);

@@ -43,3 +43,4 @@ registrada aquí se revierte sin instrucción explícita del dueño del proyecto
 - 2026-09-25 — tienda — se revierten placeholders fijos y botón de búsqueda.
 - 2026-09-30 — footer — columna Contacto oculta si no hay datos de contacto.
 - 2026-09-30 — 404 — página propia con el estilo del estado vacío del catálogo.
+- 2026-09-30 — admin — estrella para marcar destacadas; la portada muestra hasta 8 y completa con las más recientes si faltan.

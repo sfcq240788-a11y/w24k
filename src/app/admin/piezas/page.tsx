@@ -1,11 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/admin-guard";
-import { togglePublicacion } from "@/lib/data/admin";
+import { togglePublicacion, toggleDestacada } from "@/lib/data/admin";
 import Link from "next/link";
 import Image from "next/image";
 import { resolveImageUrl } from "@/lib/media-url";
 import { redirect } from "next/navigation";
-import { Plus, Eye, EyeOff, Edit2 } from "lucide-react";
+import { Plus, Eye, EyeOff, Edit2, Star } from "lucide-react";
 
 export default async function AdminPiezasPage() {
   const guard = await assertAdmin();
@@ -14,7 +14,7 @@ export default async function AdminPiezasPage() {
   const supabase = createAdminClient();
   const { data: piezas } = await supabase
     .from("piezas")
-    .select("id, nombre, precio, estado_publicacion, slug, piezas_media(url, ruta_600, orden)")
+    .select("id, nombre, precio, estado_publicacion, destacada, slug, piezas_media(url, ruta_600, orden)")
     .order("created_at", { ascending: false });
 
   return (
@@ -36,6 +36,9 @@ export default async function AdminPiezasPage() {
       </div>
 
       <div className="w-full">
+        <div className="mb-4 text-xs tracking-widest text-onyx/50 uppercase">
+          {piezas?.filter(p => p.destacada).length || 0} piezas destacadas · la portada muestra hasta 8
+        </div>
         <table className="w-full text-left font-sans text-sm text-onyx">
           <thead>
             <tr className="border-b border-line text-[10px] uppercase tracking-[0.15em] text-onyx/50">
@@ -123,6 +126,30 @@ export default async function AdminPiezasPage() {
                           ) : (
                             <Eye size={16} strokeWidth={1.5} />
                           )}
+                        </button>
+                      </form>
+                      <form
+                        action={async () => {
+                          "use server";
+                          await toggleDestacada(p.id, p.destacada || false);
+                        }}
+                        className="inline"
+                      >
+                        <button
+                          type="submit"
+                          title={p.destacada ? "Quitar de destacadas" : "Marcar como destacada"}
+                          aria-label={p.destacada ? "Quitar de destacadas" : "Marcar como destacada"}
+                          className={`transition-colors ${
+                            p.destacada
+                              ? "text-gold"
+                              : "text-onyx/40 hover:text-gold"
+                          }`}
+                        >
+                          <Star 
+                            size={16} 
+                            strokeWidth={1.5} 
+                            fill={p.destacada ? "currentColor" : "none"} 
+                          />
                         </button>
                       </form>
                     </div>
